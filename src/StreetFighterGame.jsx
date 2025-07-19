@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3001');
+const socket = io("https://backendjuegostreetfighter-production.up.railway.app");
 
 const StreetFighterGame = () => {
   const [gameState, setGameState] = useState({
