@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io("https://backendjuegostreetfighter-production.up.railway.app");
+const socket = io(import.meta.env.VITE_BACKEND_URL);
 
 const StreetFighterGame = () => {
   const [gameState, setGameState] = useState({
@@ -41,10 +41,10 @@ const StreetFighterGame = () => {
       console.log('Disconnected from server');
     });
 
-    socket.on('assignPlayer', (id) => {
-      setPlayerId(id);
+    socket.on('assignPlayer', (data) => {
+      setPlayerId(data.role);
       setConnectionStatus('assigned');
-      console.log('Assigned as:', id);
+      console.log('Assigned as:', data.role);
     });
 
     socket.on('playersUpdate', (data) => {
@@ -142,123 +142,6 @@ const StreetFighterGame = () => {
     }
     return { hp: defender.hp, breakCombo: false };
   };
-
-  const gameLoop = useCallback(() => {
-    if (!gameState.gameStarted || gameState.winner) return;
-
-    setGameState(prev => {
-      const newState = { ...prev };
-
-      // Obtener las teclas correctas para cada jugador
-      const player1Keys = playerId === 'player1' ? localKeys.current : remoteKeys.current;
-      const player2Keys = playerId === 'player2' ? localKeys.current : remoteKeys.current;
-
-      // Player 1 controls (WASD + FGH)
-      if (player1Keys['a'] && newState.player1.x > 50) {
-        newState.player1.x -= 5;
-        newState.player1.facing = 'left';
-      }
-      if (player1Keys['d'] && newState.player1.x < 720) {
-        newState.player1.x += 5;
-        newState.player1.facing = 'right';
-      }
-      if (player1Keys['w'] && !newState.player1.isJumping) {
-        newState.player1.isJumping = true;
-        newState.player1.jumpVelocity = -15;
-      }
-      newState.player1.isBlocking = player1Keys['g'] || false;
-
-      // Player 1 attack
-      if (player1Keys['f'] && !newState.player1.isAttacking) {
-        newState.player1.isAttacking = true;
-        newState.player1.lastAttackTime = Date.now();
-        const result = performAttack(newState.player1, newState.player2);
-        newState.player2.hp = result.hp;
-        newState.player1.combo = result.breakCombo ? 0 : newState.player1.combo + 1;
-        setTimeout(() => {
-          setGameState(s => ({ ...s, player1: { ...s.player1, isAttacking: false } }));
-        }, 200);
-      }
-
-      // Player 1 special
-      if (player1Keys['h'] && newState.player1.special >= 50) {
-        newState.player1.special -= 50;
-        const result = performAttack(newState.player1, newState.player2, 'special');
-        newState.player2.hp = result.hp;
-        newState.player1.combo += 1;
-        addEffect(newState.player1.x, newState.player1.y - 30, 'special', '#00FFFF');
-      }
-
-      // Player 2 controls (Arrow keys + 123)
-      if (player2Keys['arrowleft'] && newState.player2.x > 50) {
-        newState.player2.x -= 5;
-        newState.player2.facing = 'left';
-      }
-      if (player2Keys['arrowright'] && newState.player2.x < 720) {
-        newState.player2.x += 5;
-        newState.player2.facing = 'right';
-      }
-      if (player2Keys['arrowup'] && !newState.player2.isJumping) {
-        newState.player2.isJumping = true;
-        newState.player2.jumpVelocity = -15;
-      }
-      newState.player2.isBlocking = player2Keys['2'] || false;
-
-      // Player 2 attack
-      if (player2Keys['1'] && !newState.player2.isAttacking) {
-        newState.player2.isAttacking = true;
-        newState.player2.lastAttackTime = Date.now();
-        const result = performAttack(newState.player2, newState.player1);
-        newState.player1.hp = result.hp;
-        newState.player2.combo = result.breakCombo ? 0 : newState.player2.combo + 1;
-        setTimeout(() => {
-          setGameState(s => ({ ...s, player2: { ...s.player2, isAttacking: false } }));
-        }, 200);
-      }
-
-      // Player 2 special
-      if (player2Keys['3'] && newState.player2.special >= 50) {
-        newState.player2.special -= 50;
-        const result = performAttack(newState.player2, newState.player1, 'special');
-        newState.player1.hp = result.hp;
-        newState.player2.combo += 1;
-        addEffect(newState.player2.x, newState.player2.y - 30, 'special', '#FF4400');
-      }
-
-      // Physics for both players
-      [newState.player1, newState.player2].forEach(player => {
-        if (player.isJumping) {
-          player.y += player.jumpVelocity;
-          player.jumpVelocity += 1;
-          if (player.y >= 300) {
-            player.y = 300;
-            player.isJumping = false;
-            player.jumpVelocity = 0;
-          }
-        }
-      });
-
-      // Regenerate special meter
-      if (newState.player1.special < 100) newState.player1.special += 0.5;
-      if (newState.player2.special < 100) newState.player2.special += 0.5;
-
-      // Reset combos after inactivity
-      const now = Date.now();
-      if (now - newState.player1.lastAttackTime > 2000) newState.player1.combo = 0;
-      if (now - newState.player2.lastAttackTime > 2000) newState.player2.combo = 0;
-
-      // Check for winners
-      if (newState.player1.hp <= 0) newState.winner = 'Player 2';
-      else if (newState.player2.hp <= 0) newState.winner = 'Player 1';
-
-      return newState;
-    });
-  }, [playerId, gameState.gameStarted, gameState.winner]);
-
-  useEffect(() => {
-    const interval = setInterval(gameLoop, 16);
-    return () => clearInterval(interval);
-  }, [gameLoop]);
 
   // Timer countdown
   useEffect(() => {
