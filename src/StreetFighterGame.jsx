@@ -60,12 +60,20 @@ const StreetFighterGame = () => {
       }
     });
 
+    socket.on('gameStateUpdate', (newGameState) => {
+      setGameState(prev => ({
+        ...prev,
+        ...newGameState
+      }));
+    });
+
     return () => {
       socket.off('connect');
       socket.off('disconnect');
       socket.off('assignPlayer');
       socket.off('playersUpdate');
       socket.off('updatePlayerKeys');
+      socket.off('gameStateUpdate');
     };
   }, [playerId]);
 
@@ -270,14 +278,8 @@ const StreetFighterGame = () => {
   }, [gameState.gameStarted, gameState.winner]);
 
   const startGame = () => {
-    setGameState(prev => ({
-      ...prev,
-      gameStarted: true,
-      winner: null,
-      timer: 90,
-      player1: { ...prev.player1, hp: 100, special: 100, combo: 0 },
-      player2: { ...prev.player2, hp: 100, special: 100, combo: 0 }
-    }));
+    // Emitir evento al servidor, no modificar estado local directamente
+    socket.emit('startGame');
   };
 
   const resetGame = () => startGame();
