@@ -466,216 +466,214 @@ useEffect(() => {
   };
 
   // Componente de controles móviles MOVIDO DENTRO
-  const MobileControls = ({ onAction, playerId }) => {
-    const baseRef = useRef(null);
-    const [stickPos, setStickPos] = useState({ x: 55, y: 55 });
-    const [center, setCenter] = useState({ x: 55, y: 55 });
-    const [dragging, setDragging] = useState(false);
-    const touchIdRef = useRef(null);
-    const intervalRef = useRef(null);
-    const activeDirRef = useRef(null);
+  const MobileControls = React.memo(({ onAction, playerId }) => {
+  const baseRef = useRef(null);
+  const stickPos = useRef({ x: 55, y: 55 });
+  const center = useRef({ x: 55, y: 55 });
+  const [renderStick, setRenderStick] = useState({ x: 55, y: 55 });
+  const [dragging, setDragging] = useState(false);
+  const touchIdRef = useRef(null);
+  const intervalRef = useRef(null);
+  const activeDirRef = useRef(null);
 
-    // Función para recalcular el centro
-    const recalcCenter = useCallback(() => {
-      if (baseRef.current) {
-        const rect = baseRef.current.getBoundingClientRect();
-        const cx = rect.width ? rect.width / 2 : 55;
-        const cy = rect.height ? rect.height / 2 : 55;
-        setCenter({ x: cx, y: cy });
-        setStickPos({ x: cx, y: cy });
-      }
-    }, []);
+  // Función para recalcular el centro
+  const recalcCenter = useCallback(() => {
+    if (baseRef.current) {
+      const rect = baseRef.current.getBoundingClientRect();
+      const cx = rect.width ? rect.width / 2 : 55;
+      const cy = rect.height ? rect.height / 2 : 55;
+      center.current = { x: cx, y: cy };
+      stickPos.current = { x: cx, y: cy };
+      setRenderStick({ x: cx, y: cy });
+    }
+  }, []);
 
-    // Calcular centro real tras montar y en resize/orientación
-    useEffect(() => {
-      recalcCenter();
-      window.addEventListener('resize', recalcCenter);
-      window.addEventListener('orientationchange', recalcCenter);
-      return () => {
-        window.removeEventListener('resize', recalcCenter);
-        window.removeEventListener('orientationchange', recalcCenter);
-      };
-    }, [recalcCenter]);
+  useEffect(() => {
+    recalcCenter();
+    window.addEventListener('resize', recalcCenter);
+    window.addEventListener('orientationchange', recalcCenter);
+    return () => {
+      window.removeEventListener('resize', recalcCenter);
+      window.removeEventListener('orientationchange', recalcCenter);
+    };
+  }, [recalcCenter]);
 
-    // Detecta dirección según desplazamiento
-    const getDirection = useCallback((dx, dy) => {
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 20) return 'right';
-        if (dx < -20) return 'left';
-      } else {
-        if (dy < -20) return 'up';
-        if (dy > 20) return 'down';
-      }
-      return null;
-    }, []);
+  const getDirection = useCallback((dx, dy) => {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 20) return 'right';
+      if (dx < -20) return 'left';
+    } else {
+      if (dy < -20) return 'up';
+      if (dy > 20) return 'down';
+    }
+    return null;
+  }, []);
 
-    const handleStickStart = useCallback((e) => {
-      const touch = e.touches[0];
-      touchIdRef.current = touch.identifier;
-      setDragging(true);
-      activeDirRef.current = null;
-      intervalRef.current = setInterval(() => {
-        if (activeDirRef.current) onAction(activeDirRef.current);
-      }, 60);
-    }, [onAction]);
+  const handleStickStart = useCallback((e) => {
+    const touch = e.touches[0];
+    touchIdRef.current = touch.identifier;
+    setDragging(true);
+    activeDirRef.current = null;
+    intervalRef.current = setInterval(() => {
+      if (activeDirRef.current) onAction(activeDirRef.current);
+    }, 60);
+  }, [onAction]);
 
-    const handleStickMove = useCallback((e) => {
-      if (!dragging) return;
-      const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
-      if (!touch) return;
-      const base = baseRef.current.getBoundingClientRect();
-      const dx = touch.clientX - (base.left + base.width / 2);
-      const dy = touch.clientY - (base.top + base.height / 2);
-      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
-      const angle = Math.atan2(dy, dx);
-      const stickX = Math.cos(angle) * dist;
-      const stickY = Math.sin(angle) * dist;
-      setStickPos({ x: base.width / 2 + stickX, y: base.height / 2 + stickY });
-      const dir = getDirection(dx, dy);
-      activeDirRef.current = dir;
-    }, [dragging, getDirection]);
+  const handleStickMove = useCallback((e) => {
+    if (!dragging) return;
+    const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
+    if (!touch) return;
+    const base = baseRef.current.getBoundingClientRect();
+    const dx = touch.clientX - (base.left + base.width / 2);
+    const dy = touch.clientY - (base.top + base.height / 2);
+    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
+    const angle = Math.atan2(dy, dx);
+    const stickX = Math.cos(angle) * dist;
+    const stickY = Math.sin(angle) * dist;
+    stickPos.current = { x: base.width / 2 + stickX, y: base.height / 2 + stickY };
+    setRenderStick(stickPos.current);
+    const dir = getDirection(dx, dy);
+    activeDirRef.current = dir;
+  }, [dragging, getDirection]);
 
-    const handleStickEnd = useCallback(() => {
-      setDragging(false);
-      setStickPos(center); // volver al centro real
-      touchIdRef.current = null;
-      activeDirRef.current = null;
-      clearInterval(intervalRef.current);
-      onAction('stop');
-    }, [center, onAction]);
+  const handleStickEnd = useCallback(() => {
+    setDragging(false);
+    stickPos.current = center.current;
+    setRenderStick(center.current);
+    touchIdRef.current = null;
+    activeDirRef.current = null;
+    clearInterval(intervalRef.current);
+    onAction('stop');
+  }, [onAction]);
 
-    return (
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '120px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 20px',
-        zIndex: 3000,
-        backgroundColor: 'rgba(0,0,0,0.3)'
-      }}>
-        {/* Joystick Táctil */}
-        <div
-          ref={baseRef}
-          onTouchStart={handleStickStart}
-          onTouchMove={handleStickMove}
-          onTouchEnd={handleStickEnd}
-          onTouchCancel={handleStickEnd}
-          style={{
-            width: '110px',
-            height: '110px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255,255,255,0.3)',
-            border: '3px solid rgba(255,255,255,0.5)',
-            position: 'relative',
-            touchAction: 'none'
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(255,255,255,0.8)',
-              border: '2px solid #333',
-              left: stickPos.x - 30,
-              top: stickPos.y - 30,
-              touchAction: 'none',
-              pointerEvents: 'none'
-            }}
-          ></div>
-        </div>
-        
-        {/* Botones en rombo */}
-        <div style={{
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '120px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '10px 20px',
+      zIndex: 3000,
+      backgroundColor: 'rgba(0,0,0,0.3)'
+    }}>
+      {/* Joystick Táctil */}
+      <div
+        ref={baseRef}
+        onTouchStart={handleStickStart}
+        onTouchMove={handleStickMove}
+        onTouchEnd={handleStickEnd}
+        onTouchCancel={handleStickEnd}
+        style={{
+          width: '110px',
+          height: '110px',
+          borderRadius: '50%',
+          backgroundColor: 'rgba(255,255,255,0.3)',
+          border: '3px solid rgba(255,255,255,0.5)',
           position: 'relative',
-          width: '120px',
-          height: '120px'
-        }}>
-          <button 
-            onTouchStart={() => onAction('special')}
-            style={{
-              position: 'absolute',
-              top: '0px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#9333ea',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >X</button>
-          
-          <button 
-            onTouchStart={() => onAction('jump')}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '0px',
-              transform: 'translateY(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#10b981',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >Y</button>
-          
-          <button 
-            onTouchStart={() => onAction('block')}
-            style={{
-              position: 'absolute',
-              bottom: '0px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#3b82f6',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >B</button>
-          
-          <button 
-            onTouchStart={() => onAction('attack')}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              right: '0px',
-              transform: 'translateY(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#dc2626',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >A</button>
-        </div>
+          touchAction: 'none'
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            border: '2px solid #333',
+            left: renderStick.x - 30,
+            top: renderStick.y - 30,
+            touchAction: 'none',
+            pointerEvents: 'none'
+          }}
+        ></div>
       </div>
-    );
-  };
+      {/* Botones en rombo */}
+      <div style={{
+        position: 'relative',
+        width: '120px',
+        height: '120px'
+      }}>
+        <button 
+          onTouchStart={() => onAction('special')}
+          style={{
+            position: 'absolute',
+            top: '0px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '45px',
+            height: '45px',
+            borderRadius: '50%',
+            backgroundColor: '#9333ea',
+            border: '2px solid #fff',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            touchAction: 'manipulation'
+          }}
+        >X</button>
+        <button 
+          onTouchStart={() => onAction('jump')}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '0px',
+            transform: 'translateY(-50%)',
+            width: '45px',
+            height: '45px',
+            borderRadius: '50%',
+            backgroundColor: '#10b981',
+            border: '2px solid #fff',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            touchAction: 'manipulation'
+          }}
+        >Y</button>
+        <button 
+          onTouchStart={() => onAction('block')}
+          style={{
+            position: 'absolute',
+            bottom: '0px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '45px',
+            height: '45px',
+            borderRadius: '50%',
+            backgroundColor: '#3b82f6',
+            border: '2px solid #fff',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            touchAction: 'manipulation'
+          }}
+        >B</button>
+        <button 
+          onTouchStart={() => onAction('attack')}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: '0px',
+            transform: 'translateY(-50%)',
+            width: '45px',
+            height: '45px',
+            borderRadius: '50%',
+            backgroundColor: '#dc2626',
+            border: '2px solid #fff',
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            touchAction: 'manipulation'
+          }}
+        >A</button>
+      </div>
+    </div>
+  );
+});
 
   return (
     <div style={styles.container}>
@@ -874,8 +872,8 @@ useEffect(() => {
           </div>
         </div>
       
-    {/* Controles móviles */}
-    {isMobileLandscape() && playerId && (playerId === 'player1' || playerId === 'player2') && (
+    {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
+    {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
       <MobileControls onAction={handleMobileAction} playerId={playerId} />
     )}
   </div>
