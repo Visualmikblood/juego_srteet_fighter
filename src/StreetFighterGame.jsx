@@ -495,236 +495,58 @@ useEffect(() => {
     }
   };
 
-  // Componente de controles móviles (joystick táctil, comentado temporalmente)
-  /*
-  const MobileControls = React.memo(({ onAction, playerId }) => {
-    const baseRef = useRef(null);
-    const stickPos = useRef({ x: 55, y: 55 });
-    const center = useRef({ x: 55, y: 55 });
-    const [renderStick, setRenderStick] = useState({ x: 55, y: 55 });
-    const [dragging, setDragging] = useState(false);
-    const touchIdRef = useRef(null);
-    const intervalRef = useRef(null);
-    const activeDirRef = useRef(null);
-
-    // Recalcula el centro del joystick (solo en mount/orientación)
-    const recalcCenter = useCallback(() => {
-      if (baseRef.current) {
-        const rect = baseRef.current.getBoundingClientRect();
-        const cx = rect.width ? rect.width / 2 : 55;
-        const cy = rect.height ? rect.height / 2 : 55;
-        center.current = { x: cx, y: cy };
-        stickPos.current = { x: cx, y: cy };
-        setRenderStick({ x: cx, y: cy });
-      }
-    }, []); // nunca depende de gameState ni props externas
-
-    useEffect(() => {
-      recalcCenter();
-      window.addEventListener('resize', recalcCenter);
-      window.addEventListener('orientationchange', recalcCenter);
-      return () => {
-        window.removeEventListener('resize', recalcCenter);
-        window.removeEventListener('orientationchange', recalcCenter);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    }, [recalcCenter]); // solo recalcula en cambio de orientación, nunca por gameState
-
-    // Detección de dirección
-    const getDirection = useCallback((dx, dy) => {
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 20) return 'right';
-        if (dx < -20) return 'left';
-      } else {
-        if (dy < -20) return 'up';
-        if (dy > 20) return 'down';
-      }
-      return null;
-    }, []);
-
-    // Iniciar movimiento del stick: solo responde al primer dedo
-    const handleStickStart = useCallback((e) => {
-      if (dragging) return; // ignorar multitouch
-      const touch = e.touches[0];
-      touchIdRef.current = touch.identifier;
-      setDragging(true);
-      activeDirRef.current = null;
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        if (activeDirRef.current) {
-          onAction(activeDirRef.current);
-        }
-      }, 60);
-    }, [onAction, dragging]); // onAction es estable (useCallback fuera, ver más abajo)
-
-    // Movimiento del stick: solo sigue el dedo que inició el drag
-    const handleStickMove = useCallback((e) => {
-      if (!dragging) return;
-      const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
-      if (!touch) return;
-      const base = baseRef.current.getBoundingClientRect();
-      const dx = touch.clientX - (base.left + base.width / 2);
-      const dy = touch.clientY - (base.top + base.height / 2);
-      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
-      const angle = Math.atan2(dy, dx);
-      const stickX = Math.cos(angle) * dist;
-      const stickY = Math.sin(angle) * dist;
-      stickPos.current = { x: base.width / 2 + stickX, y: base.height / 2 + stickY };
-      setRenderStick(stickPos.current);
-      const dir = getDirection(dx, dy);
-      // Solo emitir si la dirección cambió
-      if (dir !== activeDirRef.current) {
-        activeDirRef.current = dir;
-        if (dir) {
-          onAction(dir);
-        }
-      }
-    }, [dragging, getDirection, onAction]); // solo depende de refs y callbacks locales
-
-    // Fin del movimiento del stick
-    const handleStickEnd = useCallback(() => {
-      setDragging(false);
-      activeDirRef.current = null;
-      setRenderStick(center.current);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      onAction('stop');
-      touchIdRef.current = null;
-    }, [onAction]); // onAction es estable
-
-    // Renderizado joystick a la izquierda, botones a la derecha
-    return (
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '120px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 20px',
-        zIndex: 3000,
-        backgroundColor: 'rgba(0,0,0,0.3)'
-      }}>
-        {/* Joystick Táctil a la IZQUIERDA */}
-        <div
-          ref={baseRef}
-          onTouchStart={handleStickStart}
-          onTouchMove={handleStickMove}
-          onTouchEnd={handleStickEnd}
-          onTouchCancel={handleStickEnd}
-          style={{
-            width: '110px',
-            height: '110px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255,255,255,0.3)',
-            border: dragging ? '3px solid #e11d48' : '3px solid rgba(255,255,255,0.5)', // borde debug
-            position: 'relative',
-            touchAction: 'none'
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(255,255,255,0.8)',
-              border: '2px solid #333',
-              left: renderStick.x - 30,
-              top: renderStick.y - 30,
-              touchAction: 'none',
-              pointerEvents: 'none',
-              transition: dragging ? 'none' : 'left 0.2s ease-out, top 0.2s ease-out'
-            }}
-          ></div>
-        </div>
-        {/* Botones en rombo a la DERECHA */}
-        <div style={{
-          position: 'relative',
-          width: '120px',
-          height: '120px'
-        }}>
-          <button 
-            onTouchStart={() => onAction('special')}
-            style={{
-              position: 'absolute',
-              top: '0px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#9333ea',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >X</button>
-          <button 
-            onTouchStart={() => onAction('jump')}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '0px',
-              transform: 'translateY(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#10b981',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >Y</button>
-          <button 
-            onTouchStart={() => onAction('block')}
-            style={{
-              position: 'absolute',
-              bottom: '0px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#3b82f6',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >B</button>
-          <button 
-            onTouchStart={() => onAction('attack')}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              right: '0px',
-              transform: 'translateY(-50%)',
-              width: '45px',
-              height: '45px',
-              borderRadius: '50%',
-              backgroundColor: '#dc2626',
-              border: '2px solid #fff',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              touchAction: 'manipulation'
-            }}
-          >A</button>
+const MobileControls = React.memo(({ onAction }) => {
+  // Panel de flechas y botones grandes táctiles
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      width: '100vw',
+      height: '38vh',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+      zIndex: 3000,
+      padding: '0 2vw 2vw 2vw',
+      pointerEvents: 'auto',
+      background: 'rgba(0,0,0,0.12)'
+    }}>
+      {/* Flechas de dirección */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <button onTouchStart={() => onAction('up')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬆️</button>
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
+          <button onTouchStart={() => onAction('left')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬅️</button>
+          <button onTouchStart={() => onAction('down')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬇️</button>
+          <button onTouchStart={() => onAction('right')} onTouchEnd={() => onAction('stop')} style={btnStyle}>➡️</button>
         </div>
       </div>
-    );
-  });
-*/
+      {/* Botones de acción tipo SNES */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <button onTouchStart={() => onAction('attack')} style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}>A</button>
+        <button onTouchStart={() => onAction('block')} style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}>B</button>
+        <button onTouchStart={() => onAction('special')} style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}>X</button>
+        <button onTouchStart={() => onAction('jump')} style={{ ...btnStyle, background: '#10b981', color: '#fff' }}>Y</button>
+      </div>
+    </div>
+  );
+});
+
+const btnStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  margin: 2,
+  fontSize: 32,
+  fontWeight: 'bold',
+  border: '2px solid #fff',
+  background: '#222',
+  color: '#fff',
+  boxShadow: '0 2px 8px #0008',
+  touchAction: 'manipulation',
+  pointerEvents: 'auto',
+};
 
   return (
     <div style={styles.container}>
@@ -877,42 +699,11 @@ useEffect(() => {
           </div>
         </div>
       {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
-      {/* NUEVO: Controles móviles tipo flechas y botones grandes táctiles */}
+      {/* Renderizamos MobileControls mediante portal para aislarlo completamente del rerender del juego */}
       {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner &&
         (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
           ? ReactDOM.createPortal(
-              <div style={{
-                position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                width: '100vw',
-                height: '38vh',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                zIndex: 3000,
-                padding: '0 2vw 2vw 2vw',
-                pointerEvents: 'auto',
-                background: 'rgba(0,0,0,0.12)'
-              }}>
-                {/* Flechas de dirección */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <button onTouchStart={() => handleMobileActionStable('up')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬆️</button>
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-                    <button onTouchStart={() => handleMobileActionStable('left')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬅️</button>
-                    <button onTouchStart={() => handleMobileActionStable('down')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬇️</button>
-                    <button onTouchStart={() => handleMobileActionStable('right')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>➡️</button>
-                  </div>
-                </div>
-                {/* Botones de acción tipo SNES */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                  <button onTouchStart={() => handleMobileActionStable('attack')} style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}>A</button>
-                  <button onTouchStart={() => handleMobileActionStable('block')} style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}>B</button>
-                  <button onTouchStart={() => handleMobileActionStable('special')} style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}>X</button>
-                  <button onTouchStart={() => handleMobileActionStable('jump')} style={{ ...btnStyle, background: '#10b981', color: '#fff' }}>Y</button>
-                </div>
-              </div>,
+              <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
               document.getElementById('mobile-controls-root')
             )
           : null)
@@ -921,23 +712,7 @@ useEffect(() => {
   );
 };
 
-// ---
-// Estilos para botones móviles táctiles (dejar arriba del componente para acceso global)
-const btnStyle = {
-  width: 64,
-  height: 64,
-  borderRadius: 32,
-  margin: 2,
-  fontSize: 32,
-  fontWeight: 'bold',
-  border: '2px solid #fff',
-  background: '#222',
-  color: '#fff',
-  boxShadow: '0 2px 8px #0008',
-  touchAction: 'manipulation',
-  pointerEvents: 'auto',
-};
-// ---
+
 // HUDMemo: HUD memoizado para evitar rerenderes globales
 const HUDMemo = memo(function HUDMemo({ styles, playerId, gameState, playersConnected }) {
   return (
