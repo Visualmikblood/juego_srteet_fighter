@@ -27,6 +27,22 @@ const StreetFighterGame = () => {
   });
 
   const [playerId, setPlayerId] = useState(null);
+
+// Suscribirse siempre a assignPlayer y mantener playerId actualizado
+useEffect(() => {
+  function handleAssignPlayer(data) {
+    setPlayerId(data.role === 'player1' || data.role === 'player2' ? data.role : null);
+  }
+  socket.on('assignPlayer', handleAssignPlayer);
+  // Intentar reasignar tras reconexión
+  socket.on('connect', () => {
+    socket.emit('requestRole'); // puedes implementar esto en backend si no existe
+  });
+  return () => {
+    socket.off('assignPlayer', handleAssignPlayer);
+    socket.off('connect');
+  };
+}, []);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [playersConnected, setPlayersConnected] = useState({ total: 0 });
   
@@ -583,7 +599,7 @@ const StreetFighterGame = () => {
         </div>
       )}
     {/* Controles móviles tipo SNES */}
-    {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && gameState.gameStarted && !gameState.winner && (
+    {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
       <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
         <MobileControls onAction={handleMobileAction} playerId={playerId} />
       </div>
@@ -709,13 +725,13 @@ function handleMobileAction(action) {
   let keyMap;
   if (playerId === 'player2') {
     keyMap = {
-      left: 'ArrowLeft',
-      right: 'ArrowRight',
-      up: 'ArrowUp',
+      left: 'arrowleft',
+      right: 'arrowright',
+      up: 'arrowup',
       attack: '1',
       block: '2',
       special: '3',
-      jump: 'ArrowUp',
+      jump: 'arrowup',
     };
   } else {
     keyMap = {
@@ -728,13 +744,26 @@ function handleMobileAction(action) {
       jump: 'w',
     };
   }
+  if (action === 'stop') {
+    // Al soltar el joystick, borrar todas las teclas de movimiento
+    Object.values(keyMap).forEach(k => {
+      if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
+        localKeys.current[k] = false;
+      }
+    });
+    emitPlayerKeys();
+    return;
+  }
   const key = keyMap[action];
   if (!key) return;
   localKeys.current[key] = true;
   emitPlayerKeys();
   setTimeout(() => {
-    localKeys.current[key] = false;
-    emitPlayerKeys();
+    // Solo para acciones que no sean movimiento continuo
+    if (!['left','right','up'].includes(action)) {
+      localKeys.current[key] = false;
+      emitPlayerKeys();
+    }
   }, action === 'jump' ? 150 : 120);
 }
 
