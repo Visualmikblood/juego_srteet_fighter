@@ -162,44 +162,31 @@ useEffect(() => {
   // Función para manejar acciones móviles - MOVIDA DENTRO DEL COMPONENTE
   // handleMobileAction estable, nunca cambia para evitar rerenders de MobileControls
   const handleMobileActionStable = useCallback((action) => {
-    // Simula las teclas o acciones del teclado para el jugador local, según el rol
-    let keyMap;
-    if (playerId === 'player2') {
-      keyMap = {
-        left: 'arrowleft',
-        right: 'arrowright',
-        up: 'arrowup',
-        attack: '1',
-        block: '2',
-        special: '3',
-        jump: 'arrowup',
-      };
-    } else {
-      keyMap = {
-        left: 'a',
-        right: 'd',
-        up: 'w',
-        attack: 'f',
-        block: 'g',
-        special: 'h',
-        jump: 'w',
-      };
-    }
-    if (action === 'stop') {
-      Object.values(keyMap).forEach(k => {
-        if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
-          localKeys.current[k] = false;
-        }
-      });
-      if (playerId && (playerId === 'player1' || playerId === 'player2')) {
-        socket.emit('playerAction', {
-          player: playerId,
-          keys: { ...localKeys.current },
-          isMobile: true
-        });
-      }
-      return;
-    }
+  // Simula las teclas o acciones del teclado para el jugador local, según el rol
+  let keyMap;
+  if (playerId === 'player2') {
+    keyMap = {
+      left: 'arrowleft',
+      right: 'arrowright',
+      up: 'arrowup',
+      attack: '1',
+      block: '2',
+      special: '3',
+      jump: 'arrowup',
+    };
+  } else {
+    keyMap = {
+      left: 'a',
+      right: 'd',
+      up: 'w',
+      attack: 'f',
+      block: 'g',
+      special: 'h',
+      jump: 'w',
+    };
+  }
+  // Acciones de dirección: mantener mientras esté pulsado
+  if (['left','right','up','down'].includes(action)) {
     const key = keyMap[action];
     if (!key) return;
     localKeys.current[key] = true;
@@ -210,19 +197,47 @@ useEffect(() => {
         isMobile: true
       });
     }
-    setTimeout(() => {
-      if (!['left','right','up'].includes(action)) {
-        localKeys.current[key] = false;
-        if (playerId && (playerId === 'player1' || playerId === 'player2')) {
-          socket.emit('playerAction', {
-            player: playerId,
-            keys: { ...localKeys.current },
-            isMobile: true
-          });
-        }
+    // No se suelta automáticamente, solo cuando se haga 'stop'
+    return;
+  }
+  // Cuando se suelta cualquier botón (stop): soltar todas las teclas de dirección
+  if (action === 'stop') {
+    Object.values(keyMap).forEach(k => {
+      if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
+        localKeys.current[k] = false;
       }
-    }, action === 'jump' ? 150 : 120);
-  }, [playerId]);
+    });
+    if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+      socket.emit('playerAction', {
+        player: playerId,
+        keys: { ...localKeys.current },
+        isMobile: true
+      });
+    }
+    return;
+  }
+  // Botones de ataque, salto, especial y bloqueo: solo requieren un toque
+  const key = keyMap[action];
+  if (!key) return;
+  localKeys.current[key] = true;
+  if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+    socket.emit('playerAction', {
+      player: playerId,
+      keys: { ...localKeys.current },
+      isMobile: true
+    });
+  }
+  setTimeout(() => {
+    localKeys.current[key] = false;
+    if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+      socket.emit('playerAction', {
+        player: playerId,
+        keys: { ...localKeys.current },
+        isMobile: true
+      });
+    }
+  }, 100); // respuesta instantánea para ataque/salto
+}, [playerId]);
 
   // Función para detectar móvil horizontal - MOVIDA DENTRO DEL COMPONENTE
   const isMobileLandscape = useCallback(() => {
@@ -570,7 +585,8 @@ const MobileControls = React.memo(({ onAction }) => {
         position: 'relative',
         width: 170,
         height: 170,
-        marginRight: 12
+        marginRight: 32, // Más a la izquierda
+        left: '-32px'    // Corrección para que no sobresalga
       }}>
         {/* X (arriba) */}
         <button
