@@ -467,6 +467,12 @@ useEffect(() => {
 
   // Componente de controles móviles MOVIDO DENTRO
   const MobileControls = React.memo(({ onAction, playerId }) => {
+    // Limpieza de intervalos al desmontar
+    useEffect(() => {
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    }, []);
   const baseRef = useRef(null);
   const stickPos = useRef({ x: 55, y: 55 });
   const center = useRef({ x: 55, y: 55 });
