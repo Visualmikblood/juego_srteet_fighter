@@ -82,10 +82,25 @@ useEffect(() => {
     });
 
     socket.on('gameStateUpdate', (newGameState) => {
-      setGameState(prev => ({
-        ...prev,
-        ...newGameState
-      }));
+      setGameState(prev => {
+        // Si no hay cambios relevantes, no actualizar
+        const keys = ['player1', 'player2', 'timer', 'winner'];
+        let changed = false;
+        for (const k of keys) {
+          if (typeof newGameState[k] === 'object' && prev[k]) {
+            // Compara posición y vida
+            if (Math.abs(newGameState[k].x - prev[k].x) > 5 || Math.abs(newGameState[k].y - prev[k].y) > 5) changed = true;
+            if (newGameState[k].hp !== prev[k].hp) changed = true;
+          } else if (newGameState[k] !== prev[k]) {
+            changed = true;
+          }
+        }
+        if (!changed) return prev;
+        return {
+          ...prev,
+          ...newGameState
+        };
+      });
     });
 
     return () => {
