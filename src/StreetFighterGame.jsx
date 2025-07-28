@@ -565,9 +565,11 @@ const StreetFighterGame = () => {
                 {(playersConnected.total >= 2) && (playerId === 'player1' || playerId === 'player2') && (
                   <button
                     onClick={startGame}
+                    onTouchStart={startGame}
                     style={styles.button}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = styles.buttonHover.backgroundColor}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = styles.button.backgroundColor}
+                    onMouseDown={e => e.target.style.backgroundColor = '#b91c1c'}
+                    onMouseUp={e => e.target.style.backgroundColor = styles.button.backgroundColor}
+                    onMouseLeave={e => e.target.style.backgroundColor = styles.button.backgroundColor}
                   >
                     FIGHT!
                   </button>
@@ -583,7 +585,7 @@ const StreetFighterGame = () => {
     {/* Controles móviles tipo SNES */}
     {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && gameState.gameStarted && !gameState.winner && (
       <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
-        <MobileControls onAction={handleMobileAction} />
+        <MobileControls onAction={handleMobileAction} playerId={playerId} />
       </div>
     )}
   </div>
@@ -597,7 +599,7 @@ function isMobileLandscape() {
   return window.innerWidth > window.innerHeight && window.innerWidth < 1100;
 }
 
-function MobileControls({ onAction }) {
+function MobileControls({ onAction, playerId }) {
   const baseRef = useRef(null);
   const [stickPos, setStickPos] = React.useState({ x: 55, y: 55 });
   const [center, setCenter] = React.useState({ x: 55, y: 55 });
@@ -702,8 +704,39 @@ function MobileControls({ onAction }) {
   );
 }
 
-
-
+function handleMobileAction(action) {
+  // Simula las teclas o acciones del teclado para el jugador local, según el rol
+  let keyMap;
+  if (playerId === 'player2') {
+    keyMap = {
+      left: 'ArrowLeft',
+      right: 'ArrowRight',
+      up: 'ArrowUp',
+      attack: '1',
+      block: '2',
+      special: '3',
+      jump: 'ArrowUp',
+    };
+  } else {
+    keyMap = {
+      left: 'a',
+      right: 'd',
+      up: 'w',
+      attack: 'f',
+      block: 'g',
+      special: 'h',
+      jump: 'w',
+    };
+  }
+  const key = keyMap[action];
+  if (!key) return;
+  localKeys.current[key] = true;
+  emitPlayerKeys();
+  setTimeout(() => {
+    localKeys.current[key] = false;
+    emitPlayerKeys();
+  }, action === 'jump' ? 150 : 120);
+}
 
 function emitPlayerKeys() {
   if (playerId && (playerId === 'player1' || playerId === 'player2')) {
@@ -714,52 +747,6 @@ function emitPlayerKeys() {
   }
 }
 
-function handleMobileAction(action) {
-  // Simula las teclas o acciones del teclado para el jugador local
-  switch (action) {
-    case 'left':
-      localKeys.current['a'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['a'] = false; emitPlayerKeys(); }, 100);
-      break;
-    case 'right':
-      localKeys.current['d'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['d'] = false; emitPlayerKeys(); }, 100);
-      break;
-    case 'up':
-      localKeys.current['w'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['w'] = false; emitPlayerKeys(); }, 100);
-      break;
-    case 'down':
-      localKeys.current['s'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['s'] = false; emitPlayerKeys(); }, 100);
-      break;
-    case 'attack':
-      localKeys.current['f'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['f'] = false; emitPlayerKeys(); }, 120);
-      break;
-    case 'block':
-      localKeys.current['g'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['g'] = false; emitPlayerKeys(); }, 120);
-      break;
-    case 'special':
-      localKeys.current['h'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['h'] = false; emitPlayerKeys(); }, 120);
-      break;
-    case 'jump':
-      localKeys.current['w'] = true;
-      emitPlayerKeys();
-      setTimeout(() => { localKeys.current['w'] = false; emitPlayerKeys(); }, 150);
-      break;
-    default:
-      break;
-  }
 }
 
 
