@@ -540,12 +540,10 @@ useEffect(() => {
 
   const handleStickEnd = useCallback(() => {
     setDragging(false);
-    stickPos.current = center.current;
-    setRenderStick(center.current);
-    touchIdRef.current = null;
     activeDirRef.current = null;
-    clearInterval(intervalRef.current);
-    onAction('stop');
+    setRenderStick(center.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    onAction('stop'); // Emite stop para frenar el jugador
   }, [onAction]);
 
   return (
