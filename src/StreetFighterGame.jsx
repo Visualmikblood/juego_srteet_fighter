@@ -775,5 +775,5 @@ function emitPlayerKeys() {
     });
   }
 }
-
+}
 export default StreetFighterGame;
