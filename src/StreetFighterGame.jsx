@@ -597,7 +597,7 @@ useEffect(() => {
             )}
           </div>
         </div>
-      )}
+      
     {/* Controles móviles tipo SNES */}
     {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
       <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
@@ -775,10 +775,5 @@ function emitPlayerKeys() {
     });
   }
 }
-
-}
-
-
-};
 
 export default StreetFighterGame;
