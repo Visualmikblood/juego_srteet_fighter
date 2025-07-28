@@ -591,16 +591,15 @@ function isMobileLandscape() {
 }
 
 function MobileControls({ onAction }) {
-  // Joystick refs
-  const stickRef = useRef(null);
   const baseRef = useRef(null);
-  let touchId = null;
-  let activeDir = null;
-  let interval = null;
+  const [stickPos, setStickPos] = React.useState({ x: 55, y: 55 }); // centro
+  const [dragging, setDragging] = React.useState(false);
+  const touchIdRef = useRef(null);
+  const intervalRef = useRef(null);
+  const activeDirRef = useRef(null);
 
   // Detecta dirección según desplazamiento
   function getDirection(dx, dy) {
-    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
     if (Math.abs(dx) > Math.abs(dy)) {
       if (dx > 20) return 'right';
       if (dx < -20) return 'left';
@@ -613,50 +612,43 @@ function MobileControls({ onAction }) {
 
   function handleStickStart(e) {
     const touch = e.touches[0];
-    touchId = touch.identifier;
-    const base = baseRef.current.getBoundingClientRect();
-    const startX = touch.clientX - base.left;
-    const startY = touch.clientY - base.top;
-    stickRef.current.style.transition = 'none';
-    stickRef.current.style.left = `${startX - 30}px`;
-    stickRef.current.style.top = `${startY - 30}px`;
-    activeDir = null;
-    interval = setInterval(() => {
-      if (activeDir) onAction(activeDir);
+    touchIdRef.current = touch.identifier;
+    setDragging(true);
+    activeDirRef.current = null;
+    intervalRef.current = setInterval(() => {
+      if (activeDirRef.current) onAction(activeDirRef.current);
     }, 60);
   }
 
   function handleStickMove(e) {
-    if (touchId === null) return;
-    const touch = Array.from(e.touches).find(t => t.identifier === touchId);
+    if (!dragging) return;
+    const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
     if (!touch) return;
     const base = baseRef.current.getBoundingClientRect();
     const dx = touch.clientX - (base.left + base.width / 2);
     const dy = touch.clientY - (base.top + base.height / 2);
-    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
+    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
     const angle = Math.atan2(dy, dx);
     const stickX = Math.cos(angle) * dist;
     const stickY = Math.sin(angle) * dist;
-    stickRef.current.style.left = `${base.width/2 + stickX - 30}px`;
-    stickRef.current.style.top = `${base.height/2 + stickY - 30}px`;
+    setStickPos({ x: 55 + stickX, y: 55 + stickY });
     const dir = getDirection(dx, dy);
-    activeDir = dir;
+    activeDirRef.current = dir;
   }
 
   function handleStickEnd() {
-    stickRef.current.style.transition = 'all 0.2s';
-    stickRef.current.style.left = '35px';
-    stickRef.current.style.top = '35px';
-    touchId = null;
-    activeDir = null;
-    clearInterval(interval);
+    setDragging(false);
+    setStickPos({ x: 55, y: 55 }); // centro
+    touchIdRef.current = null;
+    activeDirRef.current = null;
+    clearInterval(intervalRef.current);
     onAction('stop');
   }
 
   return (
     <div className="mobile-controls">
       {/* Joystick Táctil */}
-      <div 
+      <div
         className="joystick-base"
         ref={baseRef}
         onTouchStart={handleStickStart}
@@ -664,7 +656,10 @@ function MobileControls({ onAction }) {
         onTouchEnd={handleStickEnd}
         onTouchCancel={handleStickEnd}
       >
-        <div className="joystick-stick" ref={stickRef}></div>
+        <div
+          className="joystick-stick"
+          style={{ left: stickPos.x - 30, top: stickPos.y - 30 }}
+        ></div>
       </div>
       {/* Botones en rombo */}
       <div className="snes-buttons rombo">
@@ -676,6 +671,7 @@ function MobileControls({ onAction }) {
     </div>
   );
 }
+
 
 
 function emitPlayerKeys() {
