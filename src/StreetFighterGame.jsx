@@ -614,54 +614,63 @@ function MobileControls({ onAction }) {
   );
 }
 
+function emitPlayerKeys() {
+  if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+    socket.emit('playerAction', {
+      player: playerId,
+      keys: { ...localKeys.current }
+    });
+  }
+}
+
 function handleMobileAction(action) {
   // Simula las teclas o acciones del teclado para el jugador local
-  // Puedes personalizar según tu lógica de teclas
   switch (action) {
     case 'left':
       localKeys.current['a'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['a'] = false; emitKeys(); }, 100);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['a'] = false; emitPlayerKeys(); }, 100);
       break;
     case 'right':
       localKeys.current['d'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['d'] = false; emitKeys(); }, 100);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['d'] = false; emitPlayerKeys(); }, 100);
       break;
     case 'up':
       localKeys.current['w'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['w'] = false; emitKeys(); }, 100);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['w'] = false; emitPlayerKeys(); }, 100);
       break;
     case 'down':
       localKeys.current['s'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['s'] = false; emitKeys(); }, 100);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['s'] = false; emitPlayerKeys(); }, 100);
       break;
     case 'attack':
       localKeys.current['f'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['f'] = false; emitKeys(); }, 120);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['f'] = false; emitPlayerKeys(); }, 120);
       break;
     case 'block':
       localKeys.current['g'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['g'] = false; emitKeys(); }, 120);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['g'] = false; emitPlayerKeys(); }, 120);
       break;
     case 'special':
       localKeys.current['h'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['h'] = false; emitKeys(); }, 120);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['h'] = false; emitPlayerKeys(); }, 120);
       break;
     case 'jump':
       localKeys.current['w'] = true;
-      emitKeys();
-      setTimeout(() => { localKeys.current['w'] = false; emitKeys(); }, 150);
+      emitPlayerKeys();
+      setTimeout(() => { localKeys.current['w'] = false; emitPlayerKeys(); }, 150);
       break;
     default:
       break;
   }
 }
+
 
 };
 
