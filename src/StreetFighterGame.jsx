@@ -591,28 +591,92 @@ function isMobileLandscape() {
 }
 
 function MobileControls({ onAction }) {
-  // Mapeo de botones SNES: A (rojo), B (amarillo), X (azul), Y (verde)
-  // D-Pad: izquierda, derecha, arriba, abajo
+  // Joystick refs
+  const stickRef = useRef(null);
+  const baseRef = useRef(null);
+  let touchId = null;
+  let activeDir = null;
+  let interval = null;
+
+  // Detecta dirección según desplazamiento
+  function getDirection(dx, dy) {
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 20) return 'right';
+      if (dx < -20) return 'left';
+    } else {
+      if (dy < -20) return 'up';
+      if (dy > 20) return 'down';
+    }
+    return null;
+  }
+
+  function handleStickStart(e) {
+    const touch = e.touches[0];
+    touchId = touch.identifier;
+    const base = baseRef.current.getBoundingClientRect();
+    const startX = touch.clientX - base.left;
+    const startY = touch.clientY - base.top;
+    stickRef.current.style.transition = 'none';
+    stickRef.current.style.left = `${startX - 30}px`;
+    stickRef.current.style.top = `${startY - 30}px`;
+    activeDir = null;
+    interval = setInterval(() => {
+      if (activeDir) onAction(activeDir);
+    }, 60);
+  }
+
+  function handleStickMove(e) {
+    if (touchId === null) return;
+    const touch = Array.from(e.touches).find(t => t.identifier === touchId);
+    if (!touch) return;
+    const base = baseRef.current.getBoundingClientRect();
+    const dx = touch.clientX - (base.left + base.width / 2);
+    const dy = touch.clientY - (base.top + base.height / 2);
+    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 40);
+    const angle = Math.atan2(dy, dx);
+    const stickX = Math.cos(angle) * dist;
+    const stickY = Math.sin(angle) * dist;
+    stickRef.current.style.left = `${base.width/2 + stickX - 30}px`;
+    stickRef.current.style.top = `${base.height/2 + stickY - 30}px`;
+    const dir = getDirection(dx, dy);
+    activeDir = dir;
+  }
+
+  function handleStickEnd() {
+    stickRef.current.style.transition = 'all 0.2s';
+    stickRef.current.style.left = '35px';
+    stickRef.current.style.top = '35px';
+    touchId = null;
+    activeDir = null;
+    clearInterval(interval);
+    onAction('stop');
+  }
+
   return (
     <div className="mobile-controls">
-      <div className="dpad">
-        <button className="dpad-btn up" onTouchStart={() => onAction('up')}>&#8593;</button>
-        <div className="dpad-middle-row">
-          <button className="dpad-btn left" onTouchStart={() => onAction('left')}>&#8592;</button>
-          <button className="dpad-btn center" disabled></button>
-          <button className="dpad-btn right" onTouchStart={() => onAction('right')}>&#8594;</button>
-        </div>
-        <button className="dpad-btn down" onTouchStart={() => onAction('down')}>&#8595;</button>
+      {/* Joystick Táctil */}
+      <div 
+        className="joystick-base"
+        ref={baseRef}
+        onTouchStart={handleStickStart}
+        onTouchMove={handleStickMove}
+        onTouchEnd={handleStickEnd}
+        onTouchCancel={handleStickEnd}
+      >
+        <div className="joystick-stick" ref={stickRef}></div>
       </div>
-      <div className="snes-buttons">
-        <button className="snes-btn snes-a" onTouchStart={() => onAction('attack')}>A</button>
-        <button className="snes-btn snes-b" onTouchStart={() => onAction('block')}>B</button>
+      {/* Botones en rombo */}
+      <div className="snes-buttons rombo">
         <button className="snes-btn snes-x" onTouchStart={() => onAction('special')}>X</button>
         <button className="snes-btn snes-y" onTouchStart={() => onAction('jump')}>Y</button>
+        <button className="snes-btn snes-b" onTouchStart={() => onAction('block')}>B</button>
+        <button className="snes-btn snes-a" onTouchStart={() => onAction('attack')}>A</button>
       </div>
     </div>
   );
 }
+
 
 function emitPlayerKeys() {
   if (playerId && (playerId === 'player1' || playerId === 'player2')) {

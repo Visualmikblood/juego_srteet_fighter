@@ -223,7 +223,7 @@ html, body, #root {
   text-align: right;
 }
 
-/* --- CONTROLES MÓVILES TIPO SNES --- */
+/* --- CONTROLES MÓVILES TIPO SNES Y JOYSTICK --- */
 .mobile-controls {
   position: fixed;
   z-index: 1000;
@@ -236,19 +236,68 @@ html, body, #root {
   pointer-events: none;
 }
 
-.dpad {
+/* Joystick táctil */
+.joystick-base {
   margin-left: 2vw;
   margin-bottom: 2vh;
+  width: 110px;
+  height: 110px;
+  background: rgba(120,120,120,0.32);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 2px 10px #0006;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+.joystick-stick {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  left: 35px;
+  top: 35px;
+  border-radius: 50%;
+  background: rgba(180,180,180,0.7);
+  box-shadow: 0 1px 6px #0005;
+  border: 2px solid #8888;
+  transition: all 0.2s;
+  pointer-events: none;
+}
+
+/* Botones en rombo */
+.snes-buttons.rombo {
+  margin-right: 2vw;
+  margin-bottom: 2vh;
+  width: 160px;
+  height: 160px;
+  position: relative;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
   pointer-events: auto;
 }
-.dpad-middle-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+.snes-buttons.rombo .snes-btn {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  font-size: 2rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px #0008;
+  pointer-events: auto;
+  touch-action: manipulation;
+  opacity: 0.98;
 }
+.snes-buttons.rombo .snes-x { left: 48px; top: 0; background: #1e88e5; color: #fff; } /* Arriba */
+.snes-buttons.rombo .snes-y { left: 0; top: 48px; background: #43a047; color: #fff; } /* Izquierda */
+.snes-buttons.rombo .snes-b { left: 96px; top: 48px; background: #fbc02d; color: #222; } /* Derecha */
+.snes-buttons.rombo .snes-a { left: 48px; top: 96px; background: #dc2626; color: #fff; } /* Abajo */
+.snes-buttons.rombo .snes-btn:active { filter: brightness(0.8); }
+
+/* D-pad antiguo oculto */
+.dpad, .dpad-middle-row, .dpad-btn { display: none !important; }
+
 .dpad-btn {
   width: 56px;
   height: 56px;
