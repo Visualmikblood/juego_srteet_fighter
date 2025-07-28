@@ -467,94 +467,117 @@ useEffect(() => {
 
   // Componente de controles móviles MOVIDO DENTRO
   const MobileControls = React.memo(({ onAction, playerId }) => {
-    // Limpieza de intervalos al desmontar
+    const baseRef = useRef(null);
+    const stickPos = useRef({ x: 55, y: 55 });
+    const center = useRef({ x: 55, y: 55 });
+    const [renderStick, setRenderStick] = useState({ x: 55, y: 55 });
+    const [dragging, setDragging] = useState(false);
+    const touchIdRef = useRef(null);
+    const intervalRef = useRef(null);
+    const activeDirRef = useRef(null);
+
     useEffect(() => {
+      const recalcCenter = () => {
+        if (baseRef.current) {
+          const rect = baseRef.current.getBoundingClientRect();
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          center.current = { x: cx, y: cy };
+          stickPos.current = { x: cx, y: cy };
+          setRenderStick({ x: cx, y: cy });
+        }
+      };
+      recalcCenter();
+      const handleResize = () => {
+        recalcCenter();
+        if (activeDirRef.current) {
+          onAction(activeDirRef.current);
+        }
+      };
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('orientationchange', handleResize);
       return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('orientationchange', handleResize);
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
-    }, []);
-  const baseRef = useRef(null);
-  const stickPos = useRef({ x: 55, y: 55 });
-  const center = useRef({ x: 55, y: 55 });
-  const [renderStick, setRenderStick] = useState({ x: 55, y: 55 });
-  const [dragging, setDragging] = useState(false);
-  const touchIdRef = useRef(null);
-  const intervalRef = useRef(null);
-  const activeDirRef = useRef(null);
+    }, [onAction]);
 
-  // Función para recalcular el centro
-  const recalcCenter = useCallback(() => {
-    if (baseRef.current) {
-      const rect = baseRef.current.getBoundingClientRect();
-      const cx = rect.width ? rect.width / 2 : 55;
-      const cy = rect.height ? rect.height / 2 : 55;
-      center.current = { x: cx, y: cy };
-      stickPos.current = { x: cx, y: cy };
-      setRenderStick({ x: cx, y: cy });
-    }
-  }, []);
-
-  useEffect(() => {
-    recalcCenter();
-    window.addEventListener('resize', recalcCenter);
-    window.addEventListener('orientationchange', recalcCenter);
-    return () => {
-      window.removeEventListener('resize', recalcCenter);
-      window.removeEventListener('orientationchange', recalcCenter);
-    };
-  }, [recalcCenter]);
-
-  const getDirection = useCallback((dx, dy) => {
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 20) return 'right';
-      if (dx < -20) return 'left';
-    } else {
-      if (dy < -20) return 'up';
-      if (dy > 20) return 'down';
-    }
-    return null;
-  }, []);
-
-  const handleStickStart = useCallback((e) => {
-    const touch = e.touches[0];
-    touchIdRef.current = touch.identifier;
-    setDragging(true);
-    activeDirRef.current = null;
-    intervalRef.current = setInterval(() => {
-      if (activeDirRef.current) {
-        onAction(activeDirRef.current);
+    const getDirection = useCallback((dx, dy) => {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 20) return 'right';
+        if (dx < -20) return 'left';
+      } else {
+        if (dy < -20) return 'up';
+        if (dy > 20) return 'down';
       }
-    }, 60);
-  }, [onAction]);
+      return null;
+    }, []);
 
-  const handleStickMove = useCallback((e) => {
-    if (!dragging) return;
-    const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
-    if (!touch) return;
-    const base = baseRef.current.getBoundingClientRect();
-    const dx = touch.clientX - (base.left + base.width / 2);
-    const dy = touch.clientY - (base.top + base.height / 2);
-    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
-    const angle = Math.atan2(dy, dx);
-    const stickX = Math.cos(angle) * dist;
-    const stickY = Math.sin(angle) * dist;
-    stickPos.current = { x: base.width / 2 + stickX, y: base.height / 2 + stickY };
-    setRenderStick(stickPos.current);
-    const dir = getDirection(dx, dy);
-    activeDirRef.current = dir;
-  }, [dragging, getDirection]);
+    const handleStickStart = useCallback((e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchIdRef.current = touch.identifier;
+      setDragging(true);
+      activeDirRef.current = null;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        if (activeDirRef.current) {
+          onAction(activeDirRef.current);
+        }
+      }, 50);
+    }, [onAction]);
 
-  const handleStickEnd = useCallback(() => {
-    setDragging(false);
-    activeDirRef.current = null;
-    setRenderStick(center.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    onAction('stop'); // Emite stop para frenar el jugador
-  }, [onAction]);
+    const handleStickMove = useCallback((e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
+      if (!touch) return;
+      const base = baseRef.current.getBoundingClientRect();
+      const dx = touch.clientX - (base.left + base.width / 2);
+      const dy = touch.clientY - (base.top + base.height / 2);
+      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
+      const angle = Math.atan2(dy, dx);
+      const stickX = Math.cos(angle) * dist;
+      const stickY = Math.sin(angle) * dist;
+      stickPos.current = { x: base.width / 2 + stickX, y: base.height / 2 + stickY };
+      setRenderStick(stickPos.current);
+      const dir = getDirection(dx, dy);
+      if (dir !== activeDirRef.current) {
+        activeDirRef.current = dir;
+        if (dir) {
+          onAction(dir);
+        }
+      }
+    }, [dragging, getDirection, onAction]);
 
-  return (
-    <div style={{
-      position: 'fixed',
+    const handleStickEnd = useCallback(() => {
+      setDragging(false);
+      activeDirRef.current = null;
+      setRenderStick(center.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      onAction('stop');
+    }, [onAction]);
+
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '120px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 20px',
+        zIndex: 3000,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        touchAction: 'none'
+      }}>
+        {/* Joystick Táctil */}
       bottom: 0,
       left: 0,
       right: 0,
