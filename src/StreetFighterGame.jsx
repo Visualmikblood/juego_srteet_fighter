@@ -576,7 +576,7 @@ const StreetFighterGame = () => {
         </div>
       )}
     {/* Controles móviles tipo SNES */}
-    {isMobileLandscape() && gameState.gameStarted && (playerId === 'player1' || playerId === 'player2') && (
+    {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && (
       <MobileControls onAction={handleMobileAction} />
     )}
   </div>
