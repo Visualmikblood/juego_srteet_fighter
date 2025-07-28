@@ -740,7 +740,7 @@ useEffect(() => {
       </div>
       {/* HUD */}
       {/* HUD memoizado para evitar rerenderes por cada tick de timer */}
-      <MemoizedHUD 
+      <HUDMemo 
         styles={styles} 
         playerId={playerId} 
         gameState={gameState} 
