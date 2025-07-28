@@ -533,8 +533,13 @@ const StreetFighterGame = () => {
       </div>
 
       {/* Start/End screens */}
-      {(!gameState.gameStarted || gameState.winner) && (
-        <div style={styles.overlay}>
+      <div
+        style={{
+          ...styles.overlay,
+          display: (!gameState.gameStarted || gameState.winner) ? 'flex' : 'none',
+          zIndex: 2000
+        }}
+      >
           <div>
             {gameState.winner ? (
               <div>
@@ -577,7 +582,9 @@ const StreetFighterGame = () => {
       )}
     {/* Controles móviles tipo SNES */}
     {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && (
-      <MobileControls onAction={handleMobileAction} />
+      <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
+        <MobileControls onAction={handleMobileAction} />
+      </div>
     )}
   </div>
   );
