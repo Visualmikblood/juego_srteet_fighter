@@ -194,7 +194,8 @@ useEffect(() => {
       if (playerId && (playerId === 'player1' || playerId === 'player2')) {
         socket.emit('playerAction', {
           player: playerId,
-          keys: { ...localKeys.current }
+          keys: { ...localKeys.current },
+          isMobile: true
         });
       }
       return;
@@ -205,7 +206,8 @@ useEffect(() => {
     if (playerId && (playerId === 'player1' || playerId === 'player2')) {
       socket.emit('playerAction', {
         player: playerId,
-        keys: { ...localKeys.current }
+        keys: { ...localKeys.current },
+        isMobile: true
       });
     }
     setTimeout(() => {
@@ -214,7 +216,8 @@ useEffect(() => {
         if (playerId && (playerId === 'player1' || playerId === 'player2')) {
           socket.emit('playerAction', {
             player: playerId,
-            keys: { ...localKeys.current }
+            keys: { ...localKeys.current },
+            isMobile: true
           });
         }
       }
