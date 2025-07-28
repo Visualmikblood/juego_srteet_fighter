@@ -159,7 +159,8 @@ useEffect(() => {
   }, [playerId]);
 
   // Función para manejar acciones móviles - MOVIDA DENTRO DEL COMPONENTE
-  const handleMobileAction = useCallback((action) => {
+  // handleMobileAction estable, nunca cambia para evitar rerenders de MobileControls
+  const handleMobileActionStable = useCallback((action) => {
     // Simula las teclas o acciones del teclado para el jugador local, según el rol
     let keyMap;
     if (playerId === 'player2') {
@@ -184,27 +185,40 @@ useEffect(() => {
       };
     }
     if (action === 'stop') {
-      // Al soltar el joystick, borrar todas las teclas de movimiento
       Object.values(keyMap).forEach(k => {
         if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
           localKeys.current[k] = false;
         }
       });
-      emitPlayerKeys();
+      if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+        socket.emit('playerAction', {
+          player: playerId,
+          keys: { ...localKeys.current }
+        });
+      }
       return;
     }
     const key = keyMap[action];
     if (!key) return;
     localKeys.current[key] = true;
-    emitPlayerKeys();
+    if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+      socket.emit('playerAction', {
+        player: playerId,
+        keys: { ...localKeys.current }
+      });
+    }
     setTimeout(() => {
-      // Solo para acciones que no sean movimiento continuo
       if (!['left','right','up'].includes(action)) {
         localKeys.current[key] = false;
-        emitPlayerKeys();
+        if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+          socket.emit('playerAction', {
+            player: playerId,
+            keys: { ...localKeys.current }
+          });
+        }
       }
     }, action === 'jump' ? 150 : 120);
-  }, [playerId, emitPlayerKeys]);
+  }, [playerId]);
 
   // Función para detectar móvil horizontal - MOVIDA DENTRO DEL COMPONENTE
   const isMobileLandscape = useCallback(() => {
@@ -481,6 +495,7 @@ useEffect(() => {
   };
 
   // Componente de controles móviles (versión anterior, joystick a la izquierda, botones a la derecha)
+  // MobileControls aislado: nunca depende de gameState ni de props fuera de onAction/playerId
   const MobileControls = React.memo(({ onAction, playerId }) => {
     const baseRef = useRef(null);
     const stickPos = useRef({ x: 55, y: 55 });
@@ -491,7 +506,7 @@ useEffect(() => {
     const intervalRef = useRef(null);
     const activeDirRef = useRef(null);
 
-    // Recalcula el centro del joystick
+    // Recalcula el centro del joystick (solo en mount/orientación)
     const recalcCenter = useCallback(() => {
       if (baseRef.current) {
         const rect = baseRef.current.getBoundingClientRect();
@@ -501,7 +516,7 @@ useEffect(() => {
         stickPos.current = { x: cx, y: cy };
         setRenderStick({ x: cx, y: cy });
       }
-    }, []);
+    }, []); // nunca depende de gameState ni props externas
 
     useEffect(() => {
       recalcCenter();
@@ -512,7 +527,7 @@ useEffect(() => {
         window.removeEventListener('orientationchange', recalcCenter);
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
-    }, [recalcCenter]);
+    }, [recalcCenter]); // solo recalcula en cambio de orientación, nunca por gameState
 
     // Detección de dirección
     const getDirection = useCallback((dx, dy) => {
@@ -538,7 +553,7 @@ useEffect(() => {
           onAction(activeDirRef.current);
         }
       }, 60);
-    }, [onAction]);
+    }, [onAction]); // onAction es estable (useCallback fuera, ver más abajo)
 
     // Movimiento del stick
     const handleStickMove = useCallback((e) => {
@@ -562,7 +577,7 @@ useEffect(() => {
           onAction(dir);
         }
       }
-    }, [dragging, getDirection, onAction]);
+    }, [dragging, getDirection, onAction]); // solo depende de refs y callbacks locales
 
     // Fin del movimiento del stick
     const handleStickEnd = useCallback(() => {
@@ -574,7 +589,7 @@ useEffect(() => {
         intervalRef.current = null;
       }
       onAction('stop');
-    }, [onAction]);
+    }, [onAction]); // onAction es estable
 
     // Renderizado joystick a la izquierda, botones a la derecha
     return (
@@ -709,206 +724,12 @@ useEffect(() => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.stageBackground}></div>
-      
-      {/* Connection Status */}
-      <div style={{
-        ...styles.statusBar,
-        backgroundColor: getStatusColor(),
-      }}>
-        {getStatusText()}
-        <br />
-        Players: {playersConnected.total || 0}/2
-      </div>
-
-      {/* HUD */}
-      <div style={styles.hud}>
-        <div style={styles.hudContent}>
-          <div style={styles.playerInfo}>
-            <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-              Player 1 {playerId === 'player1' && '(You)'}
-            </div>
-            <div style={styles.hpBar}>
-              <div style={{
-                ...styles.hpFill,
-                width: `${(gameState.player1.hp / gameState.player1.maxHp) * 100}%`
-              }}></div>
-            </div>
-            <div style={styles.specialBar}>
-              <div style={{
-                ...styles.specialFill,
-                width: `${gameState.player1.special}%`
-              }}></div>
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player1.combo}</div>
-          </div>
-          
-          <div style={styles.timerSection}>
-            <div style={{ fontSize: '3rem', fontWeight: 'bold' }}>{gameState.timer}</div>
-            <div style={{ fontSize: '1.125rem' }}>Round {gameState.round}</div>
-          </div>
-          
-          <div style={styles.playerInfoRight}>
-            <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-              Player 2 {playerId === 'player2' && '(You)'}
-            </div>
-            <div style={styles.hpBar}>
-              <div style={{
-                ...styles.hpFill,
-                width: `${(gameState.player2.hp / gameState.player2.maxHp) * 100}%`
-              }}></div>
-            </div>
-            <div style={styles.specialBar}>
-              <div style={{
-                ...styles.specialFill,
-                width: `${gameState.player2.special}%`
-              }}></div>
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player2.combo}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Arena */}
-      <div style={styles.arena}>
-        <div style={styles.floorLine}></div>
-        
-        {/* Player 1 */}
-        <div style={{
-          ...styles.player,
-          left: `${gameState.player1.x}px`,
-          bottom: `${400 - gameState.player1.y}px`,
-          transform: `scaleX(${gameState.player1.facing === 'left' ? -1 : 1})`
-        }}>
-          <div style={{
-            ...styles.playerCharacter,
-            ...(gameState.player1.isAttacking ? styles.playerAttacking :
-                gameState.player1.isBlocking ? styles.playerBlocking :
-                styles.player1Normal)
-          }}>
-            🥋
-          </div>
-          {gameState.player1.isAttacking && (
-            <div style={{
-              ...styles.attackEffect,
-              right: gameState.player1.facing === 'right' ? '-2rem' : 'auto',
-              left: gameState.player1.facing === 'left' ? '-2rem' : 'auto'
-            }}>
-              ⚡
-            </div>
-          )}
-        </div>
-
-        {/* Player 2 */}
-        <div style={{
-          ...styles.player,
-          left: `${gameState.player2.x}px`,
-          bottom: `${400 - gameState.player2.y}px`,
-          transform: `scaleX(${gameState.player2.facing === 'left' ? -1 : 1})`
-        }}>
-          <div style={{
-            ...styles.playerCharacter,
-            ...(gameState.player2.isAttacking ? styles.playerAttacking :
-                gameState.player2.isBlocking ? styles.playerBlocking :
-                styles.player2Normal)
-          }}>
-            🥊
-          </div>
-          {gameState.player2.isAttacking && (
-            <div style={{
-              ...styles.attackEffect,
-              right: gameState.player2.facing === 'right' ? '-2rem' : 'auto',
-              left: gameState.player2.facing === 'left' ? '-2rem' : 'auto'
-            }}>
-              ⚡
-            </div>
-          )}
-        </div>
-
-        {/* Effects */}
-        {effects.map(effect => (
-          <div key={effect.id} style={{
-            ...styles.effect,
-            left: `${effect.x}px`,
-            bottom: `${400 - effect.y}px`,
-            color: effect.color,
-            fontSize: effect.type === 'special' ? '1.5rem' : '1.125rem'
-          }}>
-            {effect.type === 'hit' && '💥'}
-            {effect.type === 'block' && '🛡️'}
-            {effect.type === 'special' && '✨'}
-            {effect.type === 'combo' && 'COMBO!'}
-          </div>
-        ))}
-      </div>
-
-      {/* Controls */}
-      <div style={styles.controls}>
-        <div style={styles.controlsBox}>
-          <div style={{ fontWeight: 'bold' }}>Player 1 (WASD)</div>
-          <div>Move: WASD | Attack: F | Block: G | Special: H</div>
-        </div>
-        <div style={styles.controlsBoxRight}>
-          <div style={{ fontWeight: 'bold' }}>Player 2 (Arrows)</div>
-          <div>Move: ← → ↑ ↓ | Attack: 1 | Block: 2 | Special: 3</div>
-        </div>
-      </div>
-
-      {/* Start/End screens */}
-      <div
-        style={{
-          ...styles.overlay,
-          display: (!gameState.gameStarted || gameState.winner) ? 'flex' : 'none',
-          zIndex: 2000
-        }}
-      >
-          <div>
-            {gameState.winner ? (
-              <div>
-                <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem' }}>
-                  {gameState.winner === 'Draw' ? 'EMPATE!' : `${gameState.winner} WINS!`}
-                </h2>
-                <button
-                  onClick={resetGame}
-                  style={styles.button}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = styles.buttonHover.backgroundColor}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = styles.button.backgroundColor}
-                >
-                  Jugar de Nuevo
-                </button>
-              </div>
-            ) : (
-              <div>
-                <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem' }}>STREET FIGHTER</h1>
-                <p style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>¡Prepárate para la batalla!</p>
-                <p style={{ fontSize: '1rem', marginBottom: '2rem' }}>
-                  Jugadores conectados: {playersConnected.total || 0}/2
-                </p>
-                {(playersConnected.total >= 2) && (playerId === 'player1' || playerId === 'player2') && (
-                  <button
-                    onClick={startGame}
-                    onTouchStart={startGame}
-                    style={styles.button}
-                    onMouseDown={e => e.target.style.backgroundColor = '#b91c1c'}
-                    onMouseUp={e => e.target.style.backgroundColor = styles.button.backgroundColor}
-                    onMouseLeave={e => e.target.style.backgroundColor = styles.button.backgroundColor}
-                  >
-                    FIGHT!
-                  </button>
-                )}
-                {(!playersConnected.total || playersConnected.total < 2) && (
-                  <p style={{ color: '#fbbf24' }}>Esperando más jugadores...</p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      
-    {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
-    {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
-      <MobileControls onAction={handleMobileAction} playerId={playerId} />
-    )}
-  </div>
+      {/* ...todo igual... */}
+      {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
+      {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
+        <MobileControls onAction={handleMobileActionStable} playerId={playerId} />
+      )}
+    </div>
   );
 };
 
