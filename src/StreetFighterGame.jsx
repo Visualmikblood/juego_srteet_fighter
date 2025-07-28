@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+import ReactDOM from 'react-dom';
 import { io } from 'socket.io-client';
 
 // Detecta entorno local y ajusta la URL del backend automáticamente
@@ -738,50 +739,13 @@ useEffect(() => {
         Players: {playersConnected.total || 0}/2
       </div>
       {/* HUD */}
-      <div style={styles.hud}>
-        <div style={styles.hudContent}>
-          <div style={styles.playerInfo}>
-            <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-              Player 1 {playerId === 'player1' && '(You)'}
-            </div>
-            <div style={styles.hpBar}>
-              <div style={{
-                ...styles.hpFill,
-                width: `${(gameState.player1.hp / gameState.player1.maxHp) * 100}%`
-              }}></div>
-            </div>
-            <div style={styles.specialBar}>
-              <div style={{
-                ...styles.specialFill,
-                width: `${gameState.player1.special}%`
-              }}></div>
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player1.combo}</div>
-          </div>
-          <div style={styles.timerSection}>
-            <div style={{ fontSize: '3rem', fontWeight: 'bold' }}>{gameState.timer}</div>
-            <div style={{ fontSize: '1.125rem' }}>Round {gameState.round}</div>
-          </div>
-          <div style={styles.playerInfoRight}>
-            <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-              Player 2 {playerId === 'player2' && '(You)'}
-            </div>
-            <div style={styles.hpBar}>
-              <div style={{
-                ...styles.hpFill,
-                width: `${(gameState.player2.hp / gameState.player2.maxHp) * 100}%`
-              }}></div>
-            </div>
-            <div style={styles.specialBar}>
-              <div style={{
-                ...styles.specialFill,
-                width: `${gameState.player2.special}%`
-              }}></div>
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player2.combo}</div>
-          </div>
-        </div>
-      </div>
+      {/* HUD memoizado para evitar rerenderes por cada tick de timer */}
+      <MemoizedHUD 
+        styles={styles} 
+        playerId={playerId} 
+        gameState={gameState} 
+        playersConnected={playersConnected} 
+      />
       {/* Arena */}
       <div style={styles.arena}>
         <div style={styles.floorLine}></div>
@@ -912,9 +876,13 @@ useEffect(() => {
           </div>
         </div>
       {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
-      {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
-        <MobileControls onAction={handleMobileActionStable} playerId={playerId} />
-      )}
+      {/* Renderizamos MobileControls mediante portal para aislarlo completamente del rerender del juego */}
+      {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner &&
+        ReactDOM.createPortal(
+          <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
+          document.getElementById('mobile-controls-root')
+        )
+      }
     </div>
   );
 };
