@@ -496,7 +496,15 @@ useEffect(() => {
   };
 
 const MobileControls = React.memo(({ onAction }) => {
-  // Panel de flechas y botones grandes táctiles
+  // Handler para todos los botones táctiles/ratón
+  const handlePress = (action) => (e) => {
+    e.preventDefault();
+    onAction(action);
+  };
+  const handleRelease = (e) => {
+    e.preventDefault();
+    onAction('stop');
+  };
   return (
     <div style={{
       position: 'fixed',
@@ -515,19 +523,83 @@ const MobileControls = React.memo(({ onAction }) => {
     }}>
       {/* Flechas de dirección */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-        <button onTouchStart={() => onAction('up')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬆️</button>
+        <button
+          onTouchStart={handlePress('up')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('up')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={btnStyle}
+        >⬆️</button>
         <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
-          <button onTouchStart={() => onAction('left')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬅️</button>
-          <button onTouchStart={() => onAction('down')} onTouchEnd={() => onAction('stop')} style={btnStyle}>⬇️</button>
-          <button onTouchStart={() => onAction('right')} onTouchEnd={() => onAction('stop')} style={btnStyle}>➡️</button>
+          <button
+            onTouchStart={handlePress('left')}
+            onTouchEnd={handleRelease}
+            onTouchCancel={handleRelease}
+            onMouseDown={handlePress('left')}
+            onMouseUp={handleRelease}
+            onMouseLeave={handleRelease}
+            style={btnStyle}
+          >⬅️</button>
+          <button
+            onTouchStart={handlePress('down')}
+            onTouchEnd={handleRelease}
+            onTouchCancel={handleRelease}
+            onMouseDown={handlePress('down')}
+            onMouseUp={handleRelease}
+            onMouseLeave={handleRelease}
+            style={btnStyle}
+          >⬇️</button>
+          <button
+            onTouchStart={handlePress('right')}
+            onTouchEnd={handleRelease}
+            onTouchCancel={handleRelease}
+            onMouseDown={handlePress('right')}
+            onMouseUp={handleRelease}
+            onMouseLeave={handleRelease}
+            style={btnStyle}
+          >➡️</button>
         </div>
       </div>
       {/* Botones de acción tipo SNES */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <button onTouchStart={() => onAction('attack')} style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}>A</button>
-        <button onTouchStart={() => onAction('block')} style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}>B</button>
-        <button onTouchStart={() => onAction('special')} style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}>X</button>
-        <button onTouchStart={() => onAction('jump')} style={{ ...btnStyle, background: '#10b981', color: '#fff' }}>Y</button>
+        <button
+          onTouchStart={handlePress('attack')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('attack')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}
+        >A</button>
+        <button
+          onTouchStart={handlePress('block')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('block')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}
+        >B</button>
+        <button
+          onTouchStart={handlePress('special')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('special')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}
+        >X</button>
+        <button
+          onTouchStart={handlePress('jump')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('jump')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...btnStyle, background: '#10b981', color: '#fff' }}
+        >Y</button>
       </div>
     </div>
   );
