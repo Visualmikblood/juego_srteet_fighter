@@ -465,7 +465,7 @@ useEffect(() => {
     }
   };
 
-  // Componente de controles móviles MOVIDO DENTRO
+  // Componente de controles móviles (versión anterior, joystick a la izquierda, botones a la derecha)
   const MobileControls = React.memo(({ onAction, playerId }) => {
     const baseRef = useRef(null);
     const stickPos = useRef({ x: 55, y: 55 });
@@ -476,33 +476,30 @@ useEffect(() => {
     const intervalRef = useRef(null);
     const activeDirRef = useRef(null);
 
+    // Recalcula el centro del joystick
+    const recalcCenter = useCallback(() => {
+      if (baseRef.current) {
+        const rect = baseRef.current.getBoundingClientRect();
+        const cx = rect.width ? rect.width / 2 : 55;
+        const cy = rect.height ? rect.height / 2 : 55;
+        center.current = { x: cx, y: cy };
+        stickPos.current = { x: cx, y: cy };
+        setRenderStick({ x: cx, y: cy });
+      }
+    }, []);
+
     useEffect(() => {
-      const recalcCenter = () => {
-        if (baseRef.current) {
-          const rect = baseRef.current.getBoundingClientRect();
-          const cx = rect.width / 2;
-          const cy = rect.height / 2;
-          center.current = { x: cx, y: cy };
-          stickPos.current = { x: cx, y: cy };
-          setRenderStick({ x: cx, y: cy });
-        }
-      };
       recalcCenter();
-      const handleResize = () => {
-        recalcCenter();
-        if (activeDirRef.current) {
-          onAction(activeDirRef.current);
-        }
-      };
-      window.addEventListener('resize', handleResize);
-      window.addEventListener('orientationchange', handleResize);
+      window.addEventListener('resize', recalcCenter);
+      window.addEventListener('orientationchange', recalcCenter);
       return () => {
-        window.removeEventListener('resize', handleResize);
-        window.removeEventListener('orientationchange', handleResize);
+        window.removeEventListener('resize', recalcCenter);
+        window.removeEventListener('orientationchange', recalcCenter);
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
-    }, [onAction]);
+    }, [recalcCenter]);
 
+    // Detección de dirección
     const getDirection = useCallback((dx, dy) => {
       if (Math.abs(dx) > Math.abs(dy)) {
         if (dx > 20) return 'right';
@@ -514,8 +511,8 @@ useEffect(() => {
       return null;
     }, []);
 
+    // Iniciar movimiento del stick
     const handleStickStart = useCallback((e) => {
-      e.preventDefault();
       const touch = e.touches[0];
       touchIdRef.current = touch.identifier;
       setDragging(true);
@@ -525,12 +522,12 @@ useEffect(() => {
         if (activeDirRef.current) {
           onAction(activeDirRef.current);
         }
-      }, 50);
+      }, 60);
     }, [onAction]);
 
+    // Movimiento del stick
     const handleStickMove = useCallback((e) => {
       if (!dragging) return;
-      e.preventDefault();
       const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
       if (!touch) return;
       const base = baseRef.current.getBoundingClientRect();
@@ -543,6 +540,7 @@ useEffect(() => {
       stickPos.current = { x: base.width / 2 + stickX, y: base.height / 2 + stickY };
       setRenderStick(stickPos.current);
       const dir = getDirection(dx, dy);
+      // Solo emitir si la dirección cambió
       if (dir !== activeDirRef.current) {
         activeDirRef.current = dir;
         if (dir) {
@@ -551,6 +549,7 @@ useEffect(() => {
       }
     }, [dragging, getDirection, onAction]);
 
+    // Fin del movimiento del stick
     const handleStickEnd = useCallback(() => {
       setDragging(false);
       activeDirRef.current = null;
@@ -562,6 +561,7 @@ useEffect(() => {
       onAction('stop');
     }, [onAction]);
 
+    // Renderizado joystick a la izquierda, botones a la derecha
     return (
       <div style={{
         position: 'fixed',
@@ -574,135 +574,123 @@ useEffect(() => {
         alignItems: 'center',
         padding: '10px 20px',
         zIndex: 3000,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        touchAction: 'none'
+        backgroundColor: 'rgba(0,0,0,0.3)'
       }}>
-        {/* Joystick Táctil */}
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: '120px',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '10px 20px',
-      zIndex: 3000,
-      backgroundColor: 'rgba(0,0,0,0.3)'
-    }}>
-      {/* Joystick Táctil */}
-      <div
-        ref={baseRef}
-        onTouchStart={handleStickStart}
-        onTouchMove={handleStickMove}
-        onTouchEnd={handleStickEnd}
-        onTouchCancel={handleStickEnd}
-        style={{
-          width: '110px',
-          height: '110px',
-          borderRadius: '50%',
-          backgroundColor: 'rgba(255,255,255,0.3)',
-          border: '3px solid rgba(255,255,255,0.5)',
-          position: 'relative',
-          touchAction: 'none'
-        }}
-      >
+        {/* Joystick Táctil a la IZQUIERDA */}
         <div
+          ref={baseRef}
+          onTouchStart={handleStickStart}
+          onTouchMove={handleStickMove}
+          onTouchEnd={handleStickEnd}
+          onTouchCancel={handleStickEnd}
           style={{
-            position: 'absolute',
-            width: '60px',
-            height: '60px',
+            width: '110px',
+            height: '110px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            border: '2px solid #333',
-            left: renderStick.x - 30,
-            top: renderStick.y - 30,
-            touchAction: 'none',
-            pointerEvents: 'none'
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            border: '3px solid rgba(255,255,255,0.5)',
+            position: 'relative',
+            touchAction: 'none'
           }}
-        ></div>
+        >
+          <div
+            style={{
+              position: 'absolute',
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              border: '2px solid #333',
+              left: renderStick.x - 30,
+              top: renderStick.y - 30,
+              touchAction: 'none',
+              pointerEvents: 'none',
+              transition: dragging ? 'none' : 'left 0.2s ease-out, top 0.2s ease-out'
+            }}
+          ></div>
+        </div>
+        {/* Botones en rombo a la DERECHA */}
+        <div style={{
+          position: 'relative',
+          width: '120px',
+          height: '120px'
+        }}>
+          <button 
+            onTouchStart={() => onAction('special')}
+            style={{
+              position: 'absolute',
+              top: '0px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#9333ea',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >X</button>
+          <button 
+            onTouchStart={() => onAction('jump')}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '0px',
+              transform: 'translateY(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#10b981',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >Y</button>
+          <button 
+            onTouchStart={() => onAction('block')}
+            style={{
+              position: 'absolute',
+              bottom: '0px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#3b82f6',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >B</button>
+          <button 
+            onTouchStart={() => onAction('attack')}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '0px',
+              transform: 'translateY(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#dc2626',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >A</button>
+        </div>
       </div>
-      {/* Botones en rombo */}
-      <div style={{
-        position: 'relative',
-        width: '120px',
-        height: '120px'
-      }}>
-        <button 
-          onTouchStart={() => onAction('special')}
-          style={{
-            position: 'absolute',
-            top: '0px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '45px',
-            height: '45px',
-            borderRadius: '50%',
-            backgroundColor: '#9333ea',
-            border: '2px solid #fff',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            touchAction: 'manipulation'
-          }}
-        >X</button>
-        <button 
-          onTouchStart={() => onAction('jump')}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '0px',
-            transform: 'translateY(-50%)',
-            width: '45px',
-            height: '45px',
-            borderRadius: '50%',
-            backgroundColor: '#10b981',
-            border: '2px solid #fff',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            touchAction: 'manipulation'
-          }}
-        >Y</button>
-        <button 
-          onTouchStart={() => onAction('block')}
-          style={{
-            position: 'absolute',
-            bottom: '0px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '45px',
-            height: '45px',
-            borderRadius: '50%',
-            backgroundColor: '#3b82f6',
-            border: '2px solid #fff',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            touchAction: 'manipulation'
-          }}
-        >B</button>
-        <button 
-          onTouchStart={() => onAction('attack')}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            right: '0px',
-            transform: 'translateY(-50%)',
-            width: '45px',
-            height: '45px',
-            borderRadius: '50%',
-            backgroundColor: '#dc2626',
-            border: '2px solid #fff',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            touchAction: 'manipulation'
-          }}
-        >A</button>
-      </div>
-    </div>
-  );
-});
+    );
+  });
 
   return (
     <div style={styles.container}>
