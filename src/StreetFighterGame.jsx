@@ -753,6 +753,7 @@ const actionBtnStyle = {
       <div
         style={{
           ...styles.overlay,
+          backgroundColor: 'rgba(0,0,0,0.85)', // Fondo oscuro garantizado
           display: (!gameState.gameStarted || gameState.winner) ? 'flex' : 'none',
           zIndex: 2000
         }}
@@ -800,13 +801,16 @@ const actionBtnStyle = {
         </div>
       {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
       {/* Renderizamos MobileControls mediante portal para aislarlo completamente del rerender del juego */}
-      {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner &&
-        (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
-          ? ReactDOM.createPortal(
-              <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
-              document.getElementById('mobile-controls-root')
-            )
-          : null)
+      {(isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner)
+        ? (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
+            ? ReactDOM.createPortal(
+                <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
+                document.getElementById('mobile-controls-root')
+              )
+            : null)
+        : (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
+            ? ReactDOM.createPortal(null, document.getElementById('mobile-controls-root'))
+            : null)
       }
     </div>
   );
