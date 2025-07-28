@@ -889,4 +889,54 @@ useEffect(() => {
   );
 };
 
+// HUDMemo: HUD memoizado para evitar rerenderes globales
+const HUDMemo = memo(function HUDMemo({ styles, playerId, gameState, playersConnected }) {
+  return (
+    <div className="hud" style={styles.hud}>
+      <div className="hud-content" style={styles.hudContent}>
+        <div className="player-info" style={styles.playerInfo}>
+          <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
+            Player 1 {playerId === 'player1' && '(You)'}
+          </div>
+          <div style={styles.hpBar}>
+            <div style={{
+              ...styles.hpFill,
+              width: `${(gameState.player1.hp / gameState.player1.maxHp) * 100}%`
+            }}></div>
+          </div>
+          <div style={styles.specialBar}>
+            <div style={{
+              ...styles.specialFill,
+              width: `${gameState.player1.special}%`
+            }}></div>
+          </div>
+          <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player1.combo}</div>
+        </div>
+        <div className="timer-section" style={styles.timerSection}>
+          <div style={{ fontSize: '3rem', fontWeight: 'bold' }}>{gameState.timer}</div>
+          <div style={{ fontSize: '1.125rem' }}>Round {gameState.round}</div>
+        </div>
+        <div className="player-info-right" style={styles.playerInfoRight}>
+          <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
+            Player 2 {playerId === 'player2' && '(You)'}
+          </div>
+          <div style={styles.hpBar}>
+            <div style={{
+              ...styles.hpFill,
+              width: `${(gameState.player2.hp / gameState.player2.maxHp) * 100}%`
+            }}></div>
+          </div>
+          <div style={styles.specialBar}>
+            <div style={{
+              ...styles.specialFill,
+              width: `${gameState.player2.special}%`
+            }}></div>
+          </div>
+          <div style={{ fontSize: '0.875rem' }}>Combo: {gameState.player2.combo}</div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default StreetFighterGame;
