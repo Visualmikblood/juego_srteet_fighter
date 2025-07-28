@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io(import.meta.env.VITE_BACKEND_URL);
+// Detecta entorno local y ajusta la URL del backend automáticamente
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+
+const socket = io(backendUrl, {
+  transports: ["polling"]
+});
 
 const StreetFighterGame = () => {
   const [gameState, setGameState] = useState({
@@ -570,8 +575,94 @@ const StreetFighterGame = () => {
           </div>
         </div>
       )}
+    {/* Controles móviles tipo SNES */}
+    {isMobileLandscape() && gameState.gameStarted && (playerId === 'player1' || playerId === 'player2') && (
+      <MobileControls onAction={handleMobileAction} />
+    )}
+  </div>
+  );
+
+// --- COMPONENTE Y FUNCIONES PARA CONTROLES MÓVILES ---
+
+function isMobileLandscape() {
+  // Detecta móvil en landscape (ancho > alto y pantalla pequeña)
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth > window.innerHeight && window.innerWidth < 1100;
+}
+
+function MobileControls({ onAction }) {
+  // Mapeo de botones SNES: A (rojo), B (amarillo), X (azul), Y (verde)
+  // D-Pad: izquierda, derecha, arriba, abajo
+  return (
+    <div className="mobile-controls">
+      <div className="dpad">
+        <button className="dpad-btn up" onTouchStart={() => onAction('up')}>&#8593;</button>
+        <div className="dpad-middle-row">
+          <button className="dpad-btn left" onTouchStart={() => onAction('left')}>&#8592;</button>
+          <button className="dpad-btn center" disabled></button>
+          <button className="dpad-btn right" onTouchStart={() => onAction('right')}>&#8594;</button>
+        </div>
+        <button className="dpad-btn down" onTouchStart={() => onAction('down')}>&#8595;</button>
+      </div>
+      <div className="snes-buttons">
+        <button className="snes-btn snes-a" onTouchStart={() => onAction('attack')}>A</button>
+        <button className="snes-btn snes-b" onTouchStart={() => onAction('block')}>B</button>
+        <button className="snes-btn snes-x" onTouchStart={() => onAction('special')}>X</button>
+        <button className="snes-btn snes-y" onTouchStart={() => onAction('jump')}>Y</button>
+      </div>
     </div>
   );
+}
+
+function handleMobileAction(action) {
+  // Simula las teclas o acciones del teclado para el jugador local
+  // Puedes personalizar según tu lógica de teclas
+  switch (action) {
+    case 'left':
+      localKeys.current['a'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['a'] = false; emitKeys(); }, 100);
+      break;
+    case 'right':
+      localKeys.current['d'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['d'] = false; emitKeys(); }, 100);
+      break;
+    case 'up':
+      localKeys.current['w'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['w'] = false; emitKeys(); }, 100);
+      break;
+    case 'down':
+      localKeys.current['s'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['s'] = false; emitKeys(); }, 100);
+      break;
+    case 'attack':
+      localKeys.current['f'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['f'] = false; emitKeys(); }, 120);
+      break;
+    case 'block':
+      localKeys.current['g'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['g'] = false; emitKeys(); }, 120);
+      break;
+    case 'special':
+      localKeys.current['h'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['h'] = false; emitKeys(); }, 120);
+      break;
+    case 'jump':
+      localKeys.current['w'] = true;
+      emitKeys();
+      setTimeout(() => { localKeys.current['w'] = false; emitKeys(); }, 150);
+      break;
+    default:
+      break;
+  }
+}
+
 };
 
 export default StreetFighterGame;

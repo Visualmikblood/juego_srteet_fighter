@@ -223,6 +223,103 @@ html, body, #root {
   text-align: right;
 }
 
+/* --- CONTROLES MÓVILES TIPO SNES --- */
+.mobile-controls {
+  position: fixed;
+  z-index: 1000;
+  left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 38vh;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.dpad {
+  margin-left: 2vw;
+  margin-bottom: 2vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+.dpad-middle-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.dpad-btn {
+  width: 56px;
+  height: 56px;
+  margin: 4px;
+  border-radius: 50%;
+  border: none;
+  background: #222;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px #0008;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.dpad-btn.center {
+  background: transparent;
+  box-shadow: none;
+}
+
+.snes-buttons {
+  margin-right: 2vw;
+  margin-bottom: 2vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: auto;
+}
+.snes-btn {
+  width: 64px;
+  height: 64px;
+  margin: 4px;
+  border-radius: 50%;
+  border: none;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  box-shadow: 0 2px 8px #0008;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.snes-a { background: #e53935; } /* Rojo */
+.snes-b { background: #fbc02d; color: #222; } /* Amarillo */
+.snes-x { background: #1e88e5; } /* Azul */
+.snes-y { background: #43a047; } /* Verde */
+.snes-btn:active { filter: brightness(0.8); }
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .arena {
+    max-width: 100vw;
+    height: 48vw;
+    min-height: 200px;
+  }
+  .hud {
+    font-size: 1.1rem;
+    padding: 0.4rem;
+  }
+  .mobile-controls {
+    display: flex;
+  }
+  .controls {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .mobile-controls {
+    display: none;
+  }
+}
+
 /* Pantalla inicio / fin */
 .overlay {
   position: absolute;
