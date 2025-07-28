@@ -592,14 +592,24 @@ function isMobileLandscape() {
 
 function MobileControls({ onAction }) {
   const baseRef = useRef(null);
-  const [stickPos, setStickPos] = React.useState({ x: 55, y: 55 }); // centro
+  const [stickPos, setStickPos] = React.useState({ x: 55, y: 55 });
+  const [center, setCenter] = React.useState({ x: 55, y: 55 });
   const [dragging, setDragging] = React.useState(false);
   const touchIdRef = useRef(null);
   const intervalRef = useRef(null);
   const activeDirRef = useRef(null);
 
+  // Calcular centro real tras montar
+  React.useEffect(() => {
+    if (baseRef.current) {
+      const rect = baseRef.current.getBoundingClientRect();
+      setCenter({ x: rect.width / 2, y: rect.height / 2 });
+      setStickPos({ x: rect.width / 2, y: rect.height / 2 });
+    }
+  }, []);
+
   // Detecta dirección según desplazamiento
-  function getDirection(dx, dy) {
+  const getDirection = React.useCallback((dx, dy) => {
     if (Math.abs(dx) > Math.abs(dy)) {
       if (dx > 20) return 'right';
       if (dx < -20) return 'left';
@@ -608,9 +618,9 @@ function MobileControls({ onAction }) {
       if (dy > 20) return 'down';
     }
     return null;
-  }
+  }, []);
 
-  function handleStickStart(e) {
+  const handleStickStart = React.useCallback((e) => {
     const touch = e.touches[0];
     touchIdRef.current = touch.identifier;
     setDragging(true);
@@ -618,9 +628,9 @@ function MobileControls({ onAction }) {
     intervalRef.current = setInterval(() => {
       if (activeDirRef.current) onAction(activeDirRef.current);
     }, 60);
-  }
+  }, [onAction]);
 
-  function handleStickMove(e) {
+  const handleStickMove = React.useCallback((e) => {
     if (!dragging) return;
     const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
     if (!touch) return;
@@ -631,19 +641,19 @@ function MobileControls({ onAction }) {
     const angle = Math.atan2(dy, dx);
     const stickX = Math.cos(angle) * dist;
     const stickY = Math.sin(angle) * dist;
-    setStickPos({ x: 55 + stickX, y: 55 + stickY });
+    setStickPos({ x: base.width / 2 + stickX, y: base.height / 2 + stickY });
     const dir = getDirection(dx, dy);
     activeDirRef.current = dir;
-  }
+  }, [dragging, getDirection]);
 
-  function handleStickEnd() {
+  const handleStickEnd = React.useCallback(() => {
     setDragging(false);
-    setStickPos({ x: 55, y: 55 }); // centro
+    setStickPos(center); // volver al centro real
     touchIdRef.current = null;
     activeDirRef.current = null;
     clearInterval(intervalRef.current);
     onAction('stop');
-  }
+  }, [center, onAction]);
 
   return (
     <div className="mobile-controls">
@@ -671,6 +681,7 @@ function MobileControls({ onAction }) {
     </div>
   );
 }
+
 
 
 
