@@ -530,7 +530,7 @@ const MobileControls = React.memo(({ onAction }) => {
           onMouseDown={handlePress('up')}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          style={btnStyle}
+          style={dpadBtnStyle}
         >⬆️</button>
         <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
           <button
@@ -540,7 +540,7 @@ const MobileControls = React.memo(({ onAction }) => {
             onMouseDown={handlePress('left')}
             onMouseUp={handleRelease}
             onMouseLeave={handleRelease}
-            style={btnStyle}
+            style={dpadBtnStyle}
           >⬅️</button>
           <button
             onTouchStart={handlePress('down')}
@@ -549,7 +549,7 @@ const MobileControls = React.memo(({ onAction }) => {
             onMouseDown={handlePress('down')}
             onMouseUp={handleRelease}
             onMouseLeave={handleRelease}
-            style={btnStyle}
+            style={dpadBtnStyle}
           >⬇️</button>
           <button
             onTouchStart={handlePress('right')}
@@ -558,30 +558,18 @@ const MobileControls = React.memo(({ onAction }) => {
             onMouseDown={handlePress('right')}
             onMouseUp={handleRelease}
             onMouseLeave={handleRelease}
-            style={btnStyle}
+            style={dpadBtnStyle}
           >➡️</button>
         </div>
       </div>
-      {/* Botones de acción tipo SNES */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <button
-          onTouchStart={handlePress('attack')}
-          onTouchEnd={handleRelease}
-          onTouchCancel={handleRelease}
-          onMouseDown={handlePress('attack')}
-          onMouseUp={handleRelease}
-          onMouseLeave={handleRelease}
-          style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}
-        >A</button>
-        <button
-          onTouchStart={handlePress('block')}
-          onTouchEnd={handleRelease}
-          onTouchCancel={handleRelease}
-          onMouseDown={handlePress('block')}
-          onMouseUp={handleRelease}
-          onMouseLeave={handleRelease}
-          style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}
-        >B</button>
+      {/* Botones de acción tipo SNES en rombo */}
+      <div style={{
+        position: 'relative',
+        width: 170,
+        height: 170,
+        marginRight: 12
+      }}>
+        {/* X (arriba) */}
         <button
           onTouchStart={handlePress('special')}
           onTouchEnd={handleRelease}
@@ -589,8 +577,9 @@ const MobileControls = React.memo(({ onAction }) => {
           onMouseDown={handlePress('special')}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}
+          style={{ ...actionBtnStyle, background: '#9333ea', color: '#fff', position: 'absolute', left: 62, top: 0 }}
         >X</button>
+        {/* Y (izquierda) */}
         <button
           onTouchStart={handlePress('jump')}
           onTouchEnd={handleRelease}
@@ -598,14 +587,34 @@ const MobileControls = React.memo(({ onAction }) => {
           onMouseDown={handlePress('jump')}
           onMouseUp={handleRelease}
           onMouseLeave={handleRelease}
-          style={{ ...btnStyle, background: '#10b981', color: '#fff' }}
+          style={{ ...actionBtnStyle, background: '#10b981', color: '#fff', position: 'absolute', left: 0, top: 62 }}
         >Y</button>
+        {/* B (abajo) */}
+        <button
+          onTouchStart={handlePress('block')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('block')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...actionBtnStyle, background: '#3b82f6', color: '#fff', position: 'absolute', left: 62, top: 124 }}
+        >B</button>
+        {/* A (derecha) */}
+        <button
+          onTouchStart={handlePress('attack')}
+          onTouchEnd={handleRelease}
+          onTouchCancel={handleRelease}
+          onMouseDown={handlePress('attack')}
+          onMouseUp={handleRelease}
+          onMouseLeave={handleRelease}
+          style={{ ...actionBtnStyle, background: '#dc2626', color: '#fff', position: 'absolute', left: 124, top: 62 }}
+        >A</button>
       </div>
     </div>
   );
 });
 
-const btnStyle = {
+const dpadBtnStyle = {
   width: 64,
   height: 64,
   borderRadius: 32,
@@ -613,11 +622,27 @@ const btnStyle = {
   fontSize: 32,
   fontWeight: 'bold',
   border: '2px solid #fff',
+  background: 'rgba(80,80,80,0.5)',
+  color: '#fff',
+  boxShadow: '0 2px 8px #0008',
+  touchAction: 'manipulation',
+  pointerEvents: 'auto',
+  transition: 'box-shadow 0.1s, background 0.1s',
+};
+
+const actionBtnStyle = {
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  fontSize: 28,
+  fontWeight: 'bold',
+  border: '2px solid #fff',
   background: '#222',
   color: '#fff',
   boxShadow: '0 2px 8px #0008',
   touchAction: 'manipulation',
   pointerEvents: 'auto',
+  transition: 'box-shadow 0.1s, background 0.1s',
 };
 
   return (
