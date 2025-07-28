@@ -284,10 +284,13 @@ html, body, #root {
   border: none;
   font-size: 2rem;
   font-weight: bold;
-  box-shadow: 0 2px 8px #0008;
+  box-shadow: 0 2px 8px #0006;
+  background: rgba(80,80,80,0.55);
+  color: #fff;
   pointer-events: auto;
   touch-action: manipulation;
   opacity: 0.98;
+  transition: background 0.2s, filter 0.2s;
 }
 .snes-buttons.rombo .snes-x { left: 48px; top: 0; background: #1e88e5; color: #fff; } /* Arriba */
 .snes-buttons.rombo .snes-y { left: 0; top: 48px; background: #43a047; color: #fff; } /* Izquierda */
