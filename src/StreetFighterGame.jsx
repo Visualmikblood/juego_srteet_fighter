@@ -581,7 +581,7 @@ const StreetFighterGame = () => {
         </div>
       )}
     {/* Controles móviles tipo SNES */}
-    {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && (
+    {isMobileLandscape() && (playerId === 'player1' || playerId === 'player2') && gameState.gameStarted && !gameState.winner && (
       <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
         <MobileControls onAction={handleMobileAction} />
       </div>
@@ -606,14 +606,27 @@ function MobileControls({ onAction }) {
   const intervalRef = useRef(null);
   const activeDirRef = useRef(null);
 
-  // Calcular centro real tras montar
-  React.useEffect(() => {
+  // Función para recalcular el centro
+  const recalcCenter = React.useCallback(() => {
     if (baseRef.current) {
       const rect = baseRef.current.getBoundingClientRect();
-      setCenter({ x: rect.width / 2, y: rect.height / 2 });
-      setStickPos({ x: rect.width / 2, y: rect.height / 2 });
+      const cx = rect.width ? rect.width / 2 : 55;
+      const cy = rect.height ? rect.height / 2 : 55;
+      setCenter({ x: cx, y: cy });
+      setStickPos({ x: cx, y: cy });
     }
   }, []);
+
+  // Calcular centro real tras montar y en resize/orientación
+  React.useEffect(() => {
+    recalcCenter();
+    window.addEventListener('resize', recalcCenter);
+    window.addEventListener('orientationchange', recalcCenter);
+    return () => {
+      window.removeEventListener('resize', recalcCenter);
+      window.removeEventListener('orientationchange', recalcCenter);
+    };
+  }, [recalcCenter]);
 
   // Detecta dirección según desplazamiento
   const getDirection = React.useCallback((dx, dy) => {
