@@ -495,8 +495,8 @@ useEffect(() => {
     }
   };
 
-  // Componente de controles móviles (versión anterior, joystick a la izquierda, botones a la derecha)
-  // MobileControls aislado: nunca depende de gameState ni de props fuera de onAction/playerId
+  // Componente de controles móviles (joystick táctil, comentado temporalmente)
+  /*
   const MobileControls = React.memo(({ onAction, playerId }) => {
     const baseRef = useRef(null);
     const stickPos = useRef({ x: 55, y: 55 });
@@ -724,6 +724,7 @@ useEffect(() => {
       </div>
     );
   });
+*/
 
   return (
     <div style={styles.container}>
@@ -876,11 +877,42 @@ useEffect(() => {
           </div>
         </div>
       {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
-      {/* Renderizamos MobileControls mediante portal para aislarlo completamente del rerender del juego */}
+      {/* NUEVO: Controles móviles tipo flechas y botones grandes táctiles */}
       {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner &&
         (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
           ? ReactDOM.createPortal(
-              <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
+              <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                width: '100vw',
+                height: '38vh',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                zIndex: 3000,
+                padding: '0 2vw 2vw 2vw',
+                pointerEvents: 'auto',
+                background: 'rgba(0,0,0,0.12)'
+              }}>
+                {/* Flechas de dirección */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <button onTouchStart={() => handleMobileActionStable('up')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬆️</button>
+                  <div style={{ display: 'flex', flexDirection: 'row', gap: 8 }}>
+                    <button onTouchStart={() => handleMobileActionStable('left')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬅️</button>
+                    <button onTouchStart={() => handleMobileActionStable('down')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>⬇️</button>
+                    <button onTouchStart={() => handleMobileActionStable('right')} onTouchEnd={() => handleMobileActionStable('stop')} style={btnStyle}>➡️</button>
+                  </div>
+                </div>
+                {/* Botones de acción tipo SNES */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                  <button onTouchStart={() => handleMobileActionStable('attack')} style={{ ...btnStyle, background: '#dc2626', color: '#fff' }}>A</button>
+                  <button onTouchStart={() => handleMobileActionStable('block')} style={{ ...btnStyle, background: '#3b82f6', color: '#fff' }}>B</button>
+                  <button onTouchStart={() => handleMobileActionStable('special')} style={{ ...btnStyle, background: '#9333ea', color: '#fff' }}>X</button>
+                  <button onTouchStart={() => handleMobileActionStable('jump')} style={{ ...btnStyle, background: '#10b981', color: '#fff' }}>Y</button>
+                </div>
+              </div>,
               document.getElementById('mobile-controls-root')
             )
           : null)
@@ -889,6 +921,23 @@ useEffect(() => {
   );
 };
 
+// ---
+// Estilos para botones móviles táctiles (dejar arriba del componente para acceso global)
+const btnStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  margin: 2,
+  fontSize: 32,
+  fontWeight: 'bold',
+  border: '2px solid #fff',
+  background: '#222',
+  color: '#fff',
+  boxShadow: '0 2px 8px #0008',
+  touchAction: 'manipulation',
+  pointerEvents: 'auto',
+};
+// ---
 // HUDMemo: HUD memoizado para evitar rerenderes globales
 const HUDMemo = memo(function HUDMemo({ styles, playerId, gameState, playersConnected }) {
   return (
