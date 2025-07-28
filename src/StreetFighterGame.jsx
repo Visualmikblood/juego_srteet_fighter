@@ -133,6 +133,70 @@ useEffect(() => {
     };
   }, [playerId]);
 
+  // Función para emitir teclas al servidor - MOVIDA DENTRO DEL COMPONENTE
+  const emitPlayerKeys = useCallback(() => {
+    if (playerId && (playerId === 'player1' || playerId === 'player2')) {
+      socket.emit('playerAction', {
+        player: playerId,
+        keys: { ...localKeys.current }
+      });
+    }
+  }, [playerId]);
+
+  // Función para manejar acciones móviles - MOVIDA DENTRO DEL COMPONENTE
+  const handleMobileAction = useCallback((action) => {
+    // Simula las teclas o acciones del teclado para el jugador local, según el rol
+    let keyMap;
+    if (playerId === 'player2') {
+      keyMap = {
+        left: 'arrowleft',
+        right: 'arrowright',
+        up: 'arrowup',
+        attack: '1',
+        block: '2',
+        special: '3',
+        jump: 'arrowup',
+      };
+    } else {
+      keyMap = {
+        left: 'a',
+        right: 'd',
+        up: 'w',
+        attack: 'f',
+        block: 'g',
+        special: 'h',
+        jump: 'w',
+      };
+    }
+    if (action === 'stop') {
+      // Al soltar el joystick, borrar todas las teclas de movimiento
+      Object.values(keyMap).forEach(k => {
+        if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
+          localKeys.current[k] = false;
+        }
+      });
+      emitPlayerKeys();
+      return;
+    }
+    const key = keyMap[action];
+    if (!key) return;
+    localKeys.current[key] = true;
+    emitPlayerKeys();
+    setTimeout(() => {
+      // Solo para acciones que no sean movimiento continuo
+      if (!['left','right','up'].includes(action)) {
+        localKeys.current[key] = false;
+        emitPlayerKeys();
+      }
+    }, action === 'jump' ? 150 : 120);
+  }, [playerId, emitPlayerKeys]);
+
+  // Función para detectar móvil horizontal - MOVIDA DENTRO DEL COMPONENTE
+  const isMobileLandscape = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth > window.innerHeight && window.innerWidth < 1100;
+  }, []);
+
   const addEffect = (x, y, type, color = '#FFD700') => {
     const effect = {
       id: Date.now() + Math.random(),
@@ -401,6 +465,218 @@ useEffect(() => {
     }
   };
 
+  // Componente de controles móviles MOVIDO DENTRO
+  const MobileControls = ({ onAction, playerId }) => {
+    const baseRef = useRef(null);
+    const [stickPos, setStickPos] = useState({ x: 55, y: 55 });
+    const [center, setCenter] = useState({ x: 55, y: 55 });
+    const [dragging, setDragging] = useState(false);
+    const touchIdRef = useRef(null);
+    const intervalRef = useRef(null);
+    const activeDirRef = useRef(null);
+
+    // Función para recalcular el centro
+    const recalcCenter = useCallback(() => {
+      if (baseRef.current) {
+        const rect = baseRef.current.getBoundingClientRect();
+        const cx = rect.width ? rect.width / 2 : 55;
+        const cy = rect.height ? rect.height / 2 : 55;
+        setCenter({ x: cx, y: cy });
+        setStickPos({ x: cx, y: cy });
+      }
+    }, []);
+
+    // Calcular centro real tras montar y en resize/orientación
+    useEffect(() => {
+      recalcCenter();
+      window.addEventListener('resize', recalcCenter);
+      window.addEventListener('orientationchange', recalcCenter);
+      return () => {
+        window.removeEventListener('resize', recalcCenter);
+        window.removeEventListener('orientationchange', recalcCenter);
+      };
+    }, [recalcCenter]);
+
+    // Detecta dirección según desplazamiento
+    const getDirection = useCallback((dx, dy) => {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 20) return 'right';
+        if (dx < -20) return 'left';
+      } else {
+        if (dy < -20) return 'up';
+        if (dy > 20) return 'down';
+      }
+      return null;
+    }, []);
+
+    const handleStickStart = useCallback((e) => {
+      const touch = e.touches[0];
+      touchIdRef.current = touch.identifier;
+      setDragging(true);
+      activeDirRef.current = null;
+      intervalRef.current = setInterval(() => {
+        if (activeDirRef.current) onAction(activeDirRef.current);
+      }, 60);
+    }, [onAction]);
+
+    const handleStickMove = useCallback((e) => {
+      if (!dragging) return;
+      const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
+      if (!touch) return;
+      const base = baseRef.current.getBoundingClientRect();
+      const dx = touch.clientX - (base.left + base.width / 2);
+      const dy = touch.clientY - (base.top + base.height / 2);
+      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
+      const angle = Math.atan2(dy, dx);
+      const stickX = Math.cos(angle) * dist;
+      const stickY = Math.sin(angle) * dist;
+      setStickPos({ x: base.width / 2 + stickX, y: base.height / 2 + stickY });
+      const dir = getDirection(dx, dy);
+      activeDirRef.current = dir;
+    }, [dragging, getDirection]);
+
+    const handleStickEnd = useCallback(() => {
+      setDragging(false);
+      setStickPos(center); // volver al centro real
+      touchIdRef.current = null;
+      activeDirRef.current = null;
+      clearInterval(intervalRef.current);
+      onAction('stop');
+    }, [center, onAction]);
+
+    return (
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '120px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 20px',
+        zIndex: 3000,
+        backgroundColor: 'rgba(0,0,0,0.3)'
+      }}>
+        {/* Joystick Táctil */}
+        <div
+          ref={baseRef}
+          onTouchStart={handleStickStart}
+          onTouchMove={handleStickMove}
+          onTouchEnd={handleStickEnd}
+          onTouchCancel={handleStickEnd}
+          style={{
+            width: '110px',
+            height: '110px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            border: '3px solid rgba(255,255,255,0.5)',
+            position: 'relative',
+            touchAction: 'none'
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              border: '2px solid #333',
+              left: stickPos.x - 30,
+              top: stickPos.y - 30,
+              touchAction: 'none',
+              pointerEvents: 'none'
+            }}
+          ></div>
+        </div>
+        
+        {/* Botones en rombo */}
+        <div style={{
+          position: 'relative',
+          width: '120px',
+          height: '120px'
+        }}>
+          <button 
+            onTouchStart={() => onAction('special')}
+            style={{
+              position: 'absolute',
+              top: '0px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#9333ea',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >X</button>
+          
+          <button 
+            onTouchStart={() => onAction('jump')}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '0px',
+              transform: 'translateY(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#10b981',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >Y</button>
+          
+          <button 
+            onTouchStart={() => onAction('block')}
+            style={{
+              position: 'absolute',
+              bottom: '0px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#3b82f6',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >B</button>
+          
+          <button 
+            onTouchStart={() => onAction('attack')}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '0px',
+              transform: 'translateY(-50%)',
+              width: '45px',
+              height: '45px',
+              borderRadius: '50%',
+              backgroundColor: '#dc2626',
+              border: '2px solid #fff',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              touchAction: 'manipulation'
+            }}
+          >A</button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.stageBackground}></div>
@@ -598,182 +874,12 @@ useEffect(() => {
           </div>
         </div>
       
-    {/* Controles móviles tipo SNES */}
-    {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner && (
-      <div style={{ position: 'fixed', zIndex: 3000, left: 0, right: 0, bottom: 0 }}>
-        <MobileControls onAction={handleMobileAction} playerId={playerId} />
-      </div>
+    {/* Controles móviles */}
+    {isMobileLandscape() && playerId && (playerId === 'player1' || playerId === 'player2') && (
+      <MobileControls onAction={handleMobileAction} playerId={playerId} />
     )}
   </div>
   );
+};
 
-// --- COMPONENTE Y FUNCIONES PARA CONTROLES MÓVILES ---
-
-function isMobileLandscape() {
-  // Detecta móvil en landscape (ancho > alto y pantalla pequeña)
-  if (typeof window === 'undefined') return false;
-  return window.innerWidth > window.innerHeight && window.innerWidth < 1100;
-}
-
-function MobileControls({ onAction, playerId }) {
-  const baseRef = useRef(null);
-  const [stickPos, setStickPos] = React.useState({ x: 55, y: 55 });
-  const [center, setCenter] = React.useState({ x: 55, y: 55 });
-  const [dragging, setDragging] = React.useState(false);
-  const touchIdRef = useRef(null);
-  const intervalRef = useRef(null);
-  const activeDirRef = useRef(null);
-
-  // Función para recalcular el centro
-  const recalcCenter = React.useCallback(() => {
-    if (baseRef.current) {
-      const rect = baseRef.current.getBoundingClientRect();
-      const cx = rect.width ? rect.width / 2 : 55;
-      const cy = rect.height ? rect.height / 2 : 55;
-      setCenter({ x: cx, y: cy });
-      setStickPos({ x: cx, y: cy });
-    }
-  }, []);
-
-  // Calcular centro real tras montar y en resize/orientación
-  React.useEffect(() => {
-    recalcCenter();
-    window.addEventListener('resize', recalcCenter);
-    window.addEventListener('orientationchange', recalcCenter);
-    return () => {
-      window.removeEventListener('resize', recalcCenter);
-      window.removeEventListener('orientationchange', recalcCenter);
-    };
-  }, [recalcCenter]);
-
-  // Detecta dirección según desplazamiento
-  const getDirection = React.useCallback((dx, dy) => {
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 20) return 'right';
-      if (dx < -20) return 'left';
-    } else {
-      if (dy < -20) return 'up';
-      if (dy > 20) return 'down';
-    }
-    return null;
-  }, []);
-
-  const handleStickStart = React.useCallback((e) => {
-    const touch = e.touches[0];
-    touchIdRef.current = touch.identifier;
-    setDragging(true);
-    activeDirRef.current = null;
-    intervalRef.current = setInterval(() => {
-      if (activeDirRef.current) onAction(activeDirRef.current);
-    }, 60);
-  }, [onAction]);
-
-  const handleStickMove = React.useCallback((e) => {
-    if (!dragging) return;
-    const touch = Array.from(e.touches).find(t => t.identifier === touchIdRef.current);
-    if (!touch) return;
-    const base = baseRef.current.getBoundingClientRect();
-    const dx = touch.clientX - (base.left + base.width / 2);
-    const dy = touch.clientY - (base.top + base.height / 2);
-    const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 40);
-    const angle = Math.atan2(dy, dx);
-    const stickX = Math.cos(angle) * dist;
-    const stickY = Math.sin(angle) * dist;
-    setStickPos({ x: base.width / 2 + stickX, y: base.height / 2 + stickY });
-    const dir = getDirection(dx, dy);
-    activeDirRef.current = dir;
-  }, [dragging, getDirection]);
-
-  const handleStickEnd = React.useCallback(() => {
-    setDragging(false);
-    setStickPos(center); // volver al centro real
-    touchIdRef.current = null;
-    activeDirRef.current = null;
-    clearInterval(intervalRef.current);
-    onAction('stop');
-  }, [center, onAction]);
-
-  return (
-    <div className="mobile-controls">
-      {/* Joystick Táctil */}
-      <div
-        className="joystick-base"
-        ref={baseRef}
-        onTouchStart={handleStickStart}
-        onTouchMove={handleStickMove}
-        onTouchEnd={handleStickEnd}
-        onTouchCancel={handleStickEnd}
-      >
-        <div
-          className="joystick-stick"
-          style={{ left: stickPos.x - 30, top: stickPos.y - 30 }}
-        ></div>
-      </div>
-      {/* Botones en rombo */}
-      <div className="snes-buttons rombo">
-        <button className="snes-btn snes-x" onTouchStart={() => onAction('special')}>X</button>
-        <button className="snes-btn snes-y" onTouchStart={() => onAction('jump')}>Y</button>
-        <button className="snes-btn snes-b" onTouchStart={() => onAction('block')}>B</button>
-        <button className="snes-btn snes-a" onTouchStart={() => onAction('attack')}>A</button>
-      </div>
-    </div>
-  );
-}
-
-function handleMobileAction(action) {
-  // Simula las teclas o acciones del teclado para el jugador local, según el rol
-  let keyMap;
-  if (playerId === 'player2') {
-    keyMap = {
-      left: 'arrowleft',
-      right: 'arrowright',
-      up: 'arrowup',
-      attack: '1',
-      block: '2',
-      special: '3',
-      jump: 'arrowup',
-    };
-  } else {
-    keyMap = {
-      left: 'a',
-      right: 'd',
-      up: 'w',
-      attack: 'f',
-      block: 'g',
-      special: 'h',
-      jump: 'w',
-    };
-  }
-  if (action === 'stop') {
-    // Al soltar el joystick, borrar todas las teclas de movimiento
-    Object.values(keyMap).forEach(k => {
-      if (['a','d','w','arrowleft','arrowright','arrowup'].includes(k)) {
-        localKeys.current[k] = false;
-      }
-    });
-    emitPlayerKeys();
-    return;
-  }
-  const key = keyMap[action];
-  if (!key) return;
-  localKeys.current[key] = true;
-  emitPlayerKeys();
-  setTimeout(() => {
-    // Solo para acciones que no sean movimiento continuo
-    if (!['left','right','up'].includes(action)) {
-      localKeys.current[key] = false;
-      emitPlayerKeys();
-    }
-  }, action === 'jump' ? 150 : 120);
-}
-
-function emitPlayerKeys() {
-  if (playerId && (playerId === 'player1' || playerId === 'player2')) {
-    socket.emit('playerAction', {
-      player: playerId,
-      keys: { ...localKeys.current }
-    });
-  }
-}
-}
 export default StreetFighterGame;
