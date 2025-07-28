@@ -878,10 +878,12 @@ useEffect(() => {
       {/* Controles móviles: solo cuando el juego está activo y no hay overlay */}
       {/* Renderizamos MobileControls mediante portal para aislarlo completamente del rerender del juego */}
       {isMobileLandscape() && playerId && gameState.gameStarted && !gameState.winner &&
-        ReactDOM.createPortal(
-          <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
-          document.getElementById('mobile-controls-root')
-        )
+        (typeof window !== 'undefined' && document.getElementById('mobile-controls-root')
+          ? ReactDOM.createPortal(
+              <MobileControls onAction={handleMobileActionStable} playerId={playerId} />, 
+              document.getElementById('mobile-controls-root')
+            )
+          : null)
       }
     </div>
   );
