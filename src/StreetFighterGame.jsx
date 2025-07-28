@@ -514,8 +514,12 @@ useEffect(() => {
     touchIdRef.current = touch.identifier;
     setDragging(true);
     activeDirRef.current = null;
+    let lastDir = null;
     intervalRef.current = setInterval(() => {
-      if (activeDirRef.current) onAction(activeDirRef.current);
+      if (activeDirRef.current && activeDirRef.current !== lastDir) {
+        onAction(activeDirRef.current);
+        lastDir = activeDirRef.current;
+      }
     }, 60);
   }, [onAction]);
 
