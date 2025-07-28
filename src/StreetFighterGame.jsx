@@ -10,6 +10,27 @@ const socket = io(backendUrl, {
 });
 
 const StreetFighterGame = () => {
+  // Bloquear zoom táctil por doble tap y pinza en toda la app
+  React.useEffect(() => {
+    // Bloquea gesto de pinza (zoom)
+    const preventPinch = (e) => {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    };
+    // Bloquea doble tap (zoom)
+    let lastTouchEnd = 0;
+    const preventDoubleTapZoom = (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 350) e.preventDefault();
+      lastTouchEnd = now;
+    };
+    document.addEventListener('touchmove', preventPinch, { passive: false });
+    document.addEventListener('touchend', preventDoubleTapZoom, false);
+    return () => {
+      document.removeEventListener('touchmove', preventPinch);
+      document.removeEventListener('touchend', preventDoubleTapZoom);
+    };
+  }, []);
+
   const [gameState, setGameState] = useState({
     player1: {
       x: 100, y: 300, hp: 100, maxHp: 100, facing: 'right',
@@ -514,15 +535,47 @@ useEffect(() => {
   };
 
 const MobileControls = React.memo(({ onAction }) => {
+  // Movimiento continuo: refs para intervalos
+  const movementInterval = React.useRef(null);
+  const activeDirection = React.useRef(null);
+
+  // Inicia movimiento continuo
+  const startContinuousMove = (action) => {
+    if (movementInterval.current) clearInterval(movementInterval.current);
+    activeDirection.current = action;
+    onAction(action); // primer paso inmediato
+    movementInterval.current = setInterval(() => {
+      onAction(action);
+    }, 60); // repite cada 60ms
+  };
+
+  // Detiene movimiento continuo
+  const stopContinuousMove = () => {
+    if (movementInterval.current) {
+      clearInterval(movementInterval.current);
+      movementInterval.current = null;
+    }
+    activeDirection.current = null;
+    onAction('stop');
+  };
+
   // Handler para todos los botones táctiles/ratón
   const handlePress = (action) => (e) => {
     e.preventDefault();
-    onAction(action);
+    // Si es dirección: movimiento continuo
+    if (["left","right","up","down"].includes(action)) {
+      startContinuousMove(action);
+    } else {
+      onAction(action); // ataque/salto: solo un toque
+    }
   };
   const handleRelease = (e) => {
     e.preventDefault();
-    onAction('stop');
+    stopContinuousMove();
   };
+  React.useEffect(() => () => { // cleanup al desmontar
+    if (movementInterval.current) clearInterval(movementInterval.current);
+  }, []);
   return (
     <div style={{
       position: 'fixed',
